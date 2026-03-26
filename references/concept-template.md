@@ -28,7 +28,8 @@ understanding the core idea.>
 ## How It Works
 
 <Brief explanation of the mechanics. Keep it general — this isn't tied to any
-specific language or framework. Include a small ASCII diagram if it helps.>
+specific language or framework. Include a small Mermaid diagram if it helps
+(see `references/diagram-guide.md` for syntax patterns).>
 
 ## Trade-Offs
 
