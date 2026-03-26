@@ -24,7 +24,7 @@ Determine the source type from `$ARGUMENTS`:
 | No argument | Local project | Analyze current working directory |
 | `/path`, `./path`, `~/path` | Local path | Analyze directory at that path |
 | `https://github.com/...` | GitHub repo | Clone to `/tmp/educator-<name>`, analyze, clean up |
-| `https://...` (non-GitHub) | Website | Use WebFetch to analyze observable tech and architecture |
+| `https://...` (non-GitHub) | Website | Try to discover source repo first (see below), fall back to external observation |
 | `npm:<package>` | npm package | `npm pack <package>` to `/tmp/educator-<name>`, extract, analyze, clean up |
 | `pypi:<package>` | PyPI package | `pip download --no-deps --no-binary :all:` to `/tmp/educator-<name>`, extract, analyze, clean up |
 
@@ -387,9 +387,48 @@ Present to the user:
 - Count of new concept pages created
 - Any cross-project connections discovered (concepts shared with previously analyzed projects)
 
-### Website Source — Modified Process
+### Website Source — Repo Discovery & Fallback
 
-When analyzing a website (non-GitHub HTTPS URL):
+When analyzing a website (non-GitHub HTTPS URL), try to find the source code
+before falling back to external-only observation.
+
+#### Step 1: Repo Discovery
+
+Use WebFetch on the main URL and look for a source repository link:
+
+1. **Page scan** — check the page content for GitHub/GitLab/Bitbucket links in:
+   - Footer (common location for "View source", "GitHub" links)
+   - Header/nav (open-source projects often link the repo prominently)
+   - Meta tags (`<meta>` with repo URLs, `<link rel="source">`)
+2. **Common URL patterns** — try `https://github.com/<domain-name-parts>` for
+   obvious cases (e.g., `https://fastify.dev` → check `https://github.com/fastify/fastify`)
+
+**Budget: one WebFetch call on the main URL.** Don't crawl subpages looking for
+a repo link. If it's not on the main page or obvious from the domain, move on.
+
+#### Step 2a: Repo Found → Pivot to Code Analysis
+
+If a repo URL is discovered:
+
+1. Clone it as a GitHub repo source: `git clone --depth 1 <repo-url> /tmp/educator-<name>`
+2. Run the **full** analysis process (all phases, all sections)
+3. Set the source URL to the discovered repo for file links and code examples
+4. In `_overview.md`, note the discovery:
+   ```
+   **Source:** [owner/repo](https://github.com/owner/repo)
+   *(discovered via [domain.com](https://domain.com))*
+   ```
+5. **Caveat in overview:** Note that the deployed site may differ from the
+   public source — especially for monorepos or heavily customized deployments.
+   If the repo is a monorepo, identify which subdirectory corresponds to the
+   website and scope the analysis to that subtree.
+
+The project subfolder is named after the **repo** (e.g., `fastify--fastify`),
+not the website domain, since the analysis is based on actual source code.
+
+#### Step 2b: No Repo Found → External Observation
+
+If no repo is discovered, fall back to external-only analysis:
 
 1. Use WebFetch on the main URL and 2-3 subpages
 2. Analyze: frontend framework detection (view source, meta tags, script URLs),
