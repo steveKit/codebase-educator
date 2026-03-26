@@ -12,8 +12,9 @@ connect, and where data flows.
 
 ### Structure
 
-1. **System Diagram** — ASCII art showing major components and their relationships.
+1. **System Diagram** — Mermaid diagram showing major components and their relationships.
    Include: entry points, core modules, data stores, external services.
+   See `references/diagram-guide.md` for Mermaid patterns.
 2. **Layer Map** — Identify the architectural layers (presentation, business logic,
    data access, infrastructure). Note which boundaries are clean vs. leaky.
 3. **Data Flow** — Trace 1-2 key operations from input to output. Show which
@@ -263,7 +264,7 @@ knowing what this codebase teaches?
 3. **Add** — What's missing that should be there from day one
 4. **Drop** — What adds complexity without proportional value
 5. **Architecture Sketch** — If you redesigned this system today, what would the
-   high-level shape look like? (ASCII diagram)
+   high-level shape look like? (Mermaid diagram)
 6. **Why This Matters** — Hindsight is a learning accelerator. The goal isn't to
    criticize but to internalize trade-off evaluation. Every "I'd do it differently"
    is a principle you can apply to your next project.
@@ -320,7 +321,7 @@ Written **last** because it summarizes all other sections.
    See `references/quality-assessment.md` for banner format.
 3. **Key Takeaways** — 3-5 bullet points: the most valuable lessons from this
    codebase
-4. **Architecture at a Glance** — Simplified ASCII diagram (copied/condensed
+4. **Architecture at a Glance** — Simplified Mermaid diagram (copied/condensed
    from architecture.md)
 4. **Section Index** — Links to all sections with one-line descriptions and
    difficulty tags:
