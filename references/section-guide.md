@@ -12,10 +12,8 @@ connect, and where data flows.
 
 ### Structure
 
-1. **System Diagram** — Mermaid diagram (`\`\`\`mermaid` fenced code block) showing
-   major components and their relationships. Include: entry points, core modules,
-   data stores, external services. Mermaid renders natively in Obsidian and is
-   responsive on smaller screens.
+1. **System Diagram** — Mermaid diagram showing major components and their relationships.
+   Include: entry points, core modules, data stores, external services.
 2. **Layer Map** — Identify the architectural layers (presentation, business logic,
    data access, infrastructure). Note which boundaries are clean vs. leaky.
 3. **Data Flow** — Trace 1-2 key operations from input to output. Show which
