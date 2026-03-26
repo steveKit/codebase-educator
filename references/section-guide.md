@@ -331,7 +331,11 @@ Written **last** because it summarizes all other sections.
 5. **Concepts Introduced** — List of all `[[concept]]` pages referenced in
    this analysis, grouped by category
 6. **Cross-Project Connections** — If other analyses exist in the vault,
-   note which concepts this project shares with them
+   note which concepts this project shares with them. **This section is
+   bidirectional** — Phase 3 also updates the other project's overview
+   with a reciprocal connection block pointing back to this project.
+   Format each connection as: concept name, how each project applies it,
+   and what the comparison teaches
 
 ---
 

@@ -230,11 +230,33 @@ beyond docs and registries.
    If it already exists, **append** a backlink entry under "## Seen In" listing
    this project and how it uses the concept.
 
-2. **Update `_index.md`** — Add or update the entry for this project in the
+2. **Cross-project connections (bidirectional)** — After writing all concept
+   backlinks, identify which existing projects share concepts with the new one:
+   - Scan `_concepts/` for concept pages whose "## Seen In" section now lists
+     **both** the new project and one or more existing projects
+   - For each connection found, build a comparison entry: concept name, how each
+     project uses it, and what the contrast teaches
+   - Write the "## Cross-Project Connections" block in the **new** project's
+     `overview.md` (this already happens in Phase 2 via section-guide.md)
+   - **Also update each connected existing project's `overview.md`**: append or
+     update its "## Cross-Project Connections" section to include a reciprocal
+     entry linking back to the new project. If the section doesn't exist yet
+     (older briefs created before this rule), create it at the end of the file
+     before any trailing `---`
+   - Format for each connection block:
+     ```
+     Concepts shared with [[<other-project>/overview|<Display Name>]]:
+     - **<Concept>** — <how this project uses it>; <how the other project uses it>.
+       <What the contrast teaches.>
+     ```
+   - Stage the modified existing `overview.md` files alongside the new project
+     files in the commit (Phase 4 step 3)
+
+3. **Update `_index.md`** — Add or update the entry for this project in the
    Map of Content. Include: source type, date analyzed, one-line summary,
    link to overview.
 
-3. **Link validation** — After writing all files, verify link integrity:
+4. **Link validation** — After writing all files, verify link integrity:
    - Grep all `[[wikilinks]]` from the project's section files
    - For each concept-style link (not `[[project/section]]` cross-refs),
      confirm a matching file exists in `_concepts/`. If it doesn't, either
@@ -255,7 +277,7 @@ The educator-briefs vault is a git repo. After writing all files, commit and pus
 
 1. `cd ~/.claude/educator-briefs` (use the symlink path, not the /mnt/ path)
 2. Create a branch: `git checkout -b brief/<project-name>`
-3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md`
+3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md` — also stage any existing project `overview.md` files that were updated with reciprocal cross-project connections
 4. Commit: `git commit -m "feat(<project-name>): add educational brief"`
 5. Push: `git push -u origin brief/<project-name>`
 6. Create PR: `gh pr create --title "feat(<project-name>): add educational brief" --body "New analysis of <project-name>" --fill`
