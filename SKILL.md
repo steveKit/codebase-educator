@@ -230,6 +230,21 @@ beyond docs and registries.
    Map of Content. Include: source type, date analyzed, one-line summary,
    link to overview.
 
+3. **Link validation** — After writing all files, verify link integrity:
+   - Grep all `[[wikilinks]]` from the project's section files
+   - For each concept-style link (not `[[project/section]]` cross-refs),
+     confirm a matching file exists in `_concepts/`. If it doesn't, either
+     the concept page was missed in step 1 (create it now) or the link
+     target is wrong (fix it to match the existing concept file)
+   - Links must be **lowercase-with-hyphens** — Obsidian treats
+     `[[Ones-complement]]` and `[[ones-complement]]` as different pages.
+     Use the Obsidian alias syntax for display names:
+     `[[ones-complement|Ones-complement]]`
+   - If a broader concept file exists that covers the linked topic, use an
+     alias link rather than creating a near-duplicate:
+     `[[cooperative-multitasking|multitasking]]` not `[[multitasking]]`
+   - **Every wikilink must resolve.** Zero orphan links in the final output.
+
 ### Phase 4: Commit & Push
 
 The educator-briefs vault is a git repo. After writing all files, commit and push:
