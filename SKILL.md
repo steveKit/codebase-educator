@@ -126,8 +126,11 @@ Write each section file using the templates in `references/section-guide.md`.
 - Use `[[concept-name]]` wikilinks for every architectural concept, design
   pattern, or philosophy mentioned — these link to `_concepts/` pages
 - Use `[[<project-name>/section-name]]` for cross-references within the project
-- Prefer Mermaid diagrams (`\`\`\`mermaid` fenced code blocks) for architecture
-  visualization — they render natively in Obsidian and are responsive on smaller screens
+- **Use Mermaid diagrams** (` ```mermaid `) for architecture visualization —
+  Obsidian renders them natively as SVG, so they reflow on any screen size
+  (desktop, tablet, mobile). See `references/diagram-guide.md` for syntax
+  patterns and style rules. Never use ASCII box-drawing characters for
+  structural diagrams — they break on narrow viewports and mobile
 - Be honest about uncertainty: "This appears to be..." rather than asserting
   intent you can't verify from code alone
 - **Embed resource links inline** — see "Resource Linking" below
