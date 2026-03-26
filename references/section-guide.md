@@ -53,6 +53,11 @@ the alternatives were.
 `[[build-vs-buy]]`, `[[boring-technology]]`, `[[polyglot-persistence]]`,
 `[[framework-lock-in]]`, etc.
 
+### External Links
+
+Link to official docs/homepage for each technology in the stack summary table.
+Include registry links (npm, PyPI, etc.) where applicable.
+
 ---
 
 ## design-patterns.md
@@ -179,6 +184,12 @@ third-party code and when to build.
 `[[dependency-inversion]]`, `[[vendor-lock-in]]`, `[[bus-factor]]`,
 `[[supply-chain-security]]`, `[[build-vs-buy]]`, etc.
 
+### External Links
+
+Link to each notable dependency's official docs, GitHub repo, and registry page.
+For the risk analysis entries, include the repo link so readers can check
+maintenance status themselves.
+
 ---
 
 ## evolution.md
@@ -233,6 +244,10 @@ priorities and engineering maturity.
 
 `[[testing-pyramid]]`, `[[test-doubles]]`, `[[property-based-testing]]`,
 `[[integration-testing]]`, `[[test-driven-development]]`, etc.
+
+### External Links
+
+Link to testing framework docs and any testing libraries used.
 
 ---
 
@@ -316,3 +331,30 @@ Written **last** because it summarizes all other sections.
    this analysis, grouped by category
 6. **Cross-Project Connections** — If other analyses exist in the vault,
    note which concepts this project shares with them
+
+---
+
+## resources.md
+
+**Goal:** One-stop reference for all external links — official docs, repos,
+registries, and supplementary guides.
+
+Written **after all other sections** (except overview) because it consolidates
+links embedded throughout.
+
+### Structure
+
+1. **Core Stack** — Table with Technology, Docs, Repository, Registry columns.
+   One row per major technology (language, framework, database, runtime).
+2. **Dependencies** — Table with Package, Purpose, Docs, Registry columns.
+   Include all dependencies mentioned in `dependencies.md`. Group by category
+   (runtime, dev tooling, testing) if the list is long (10+).
+3. **Pattern References** — Table with Pattern, Reference columns. Link to
+   authoritative explanations for each pattern discussed in `design-patterns.md`.
+   Prefer language-specific guides over abstract theory.
+4. **Further Reading** — Curated list of articles, talks, or guides that are
+   genuinely relevant to understanding this codebase's approach. Not a generic
+   reading list — every entry should connect back to something observed in the
+   analysis. Format: `[Title](url) — why this is relevant`.
+
+Omit any section or table column that would be empty.
