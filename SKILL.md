@@ -9,7 +9,9 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch]
 # Codebase Educator
 
 Analyze a source and produce a structured educational brief as an Obsidian-compatible
-vault in `~/.claude/educator-briefs/`.
+vault. The vault lives on the Windows filesystem at `/mnt/c/Users/horse/Obsidian/educator-briefs/`
+and is symlinked to `~/.claude/educator-briefs/`. Always use the symlink path for
+file operations — the safety hook allowlists the resolved path.
 
 **Arguments**: $ARGUMENTS
 
@@ -62,7 +64,8 @@ a timestamped version (e.g., `my-app-2026-03`).
 ├── testing-strategy.md      # What's tested, how, and what's missing
 ├── if-starting-over.md      # Lessons learned, what to do differently
 ├── learning-path.md         # Ordered reading list of files/modules
-└── glossary.md              # Domain and technical terms defined in context
+├── glossary.md              # Domain and technical terms defined in context
+└── resources.md             # Consolidated links to official docs, repos, and guides
 ```
 
 ## Process
@@ -126,6 +129,7 @@ Write each section file using the templates in `references/section-guide.md`.
 - Prefer ASCII diagrams for architecture visualization — they render everywhere
 - Be honest about uncertainty: "This appears to be..." rather than asserting
   intent you can't verify from code alone
+- **Embed resource links inline** — see "Resource Linking" below
 
 Write sections in this order (each builds on the previous):
 1. `architecture.md`
@@ -139,7 +143,80 @@ Write sections in this order (each builds on the previous):
 9. `if-starting-over.md`
 10. `learning-path.md`
 11. `glossary.md`
-12. `overview.md` (last — it summarizes everything above)
+12. `resources.md` (consolidated link reference)
+13. `overview.md` (last — it summarizes everything above)
+
+### Resource Linking
+
+Every section should embed links to official documentation and dependency pages
+where they are contextually relevant. Additionally, a consolidated `resources.md`
+collects all links in one place.
+
+#### Inline Links (embedded in each section)
+
+As you write each section, link to external resources where they add value:
+
+- **`technology-choices.md`** — Link to official docs/homepage for each major
+  technology choice (language, framework, database, etc.)
+- **`design-patterns.md`** — Link to authoritative pattern references (e.g.,
+  refactoring.guru, language-specific pattern guides) for patterns discussed
+- **`dependencies.md`** — Link to each notable dependency's homepage, docs, and
+  repo (npm/PyPI/crates.io page, GitHub repo, official docs site)
+- **`testing-strategy.md`** — Link to testing framework docs
+- **`gaps-vulnerabilities.md`** — Link to relevant guides for addressing gaps
+  (e.g., OWASP guides, caching strategy articles)
+- **`learning-path.md`** — Link to prerequisite reading for advanced topics
+
+Format inline links as standard markdown: `[Express docs](https://expressjs.com/en/api.html)`.
+Place them naturally in the text where a reader would want to dive deeper, not
+dumped in a list at the end of a paragraph.
+
+#### URL Construction
+
+For well-known registries, construct URLs directly — these follow predictable patterns:
+
+| Registry | Pattern | Example |
+|---|---|---|
+| npm | `https://www.npmjs.com/package/<name>` | `https://www.npmjs.com/package/express` |
+| PyPI | `https://pypi.org/project/<name>/` | `https://pypi.org/project/flask/` |
+| crates.io | `https://crates.io/crates/<name>` | `https://crates.io/crates/serde` |
+| pkg.go.dev | `https://pkg.go.dev/<module>` | `https://pkg.go.dev/net/http` |
+| GitHub | `https://github.com/<owner>/<repo>` | `https://github.com/expressjs/express` |
+
+For official documentation sites, use WebFetch to verify the URL resolves before
+including it. If a docs URL can't be verified, link to the registry page instead —
+a working link to the right package is better than a broken link to the docs.
+
+#### `resources.md` (consolidated)
+
+After writing all sections, produce `resources.md` with every external link
+collected and organized:
+
+```markdown
+# Resources
+
+## Core Stack
+| Technology | Docs | Repository | Registry |
+|---|---|---|---|
+| Express | [expressjs.com](https://expressjs.com) | [GitHub](https://github.com/expressjs/express) | [npm](https://www.npmjs.com/package/express) |
+
+## Dependencies
+| Package | Purpose | Docs | Registry |
+|---|---|---|---|
+| helmet | Security headers | [helmetjs.github.io](https://helmetjs.github.io) | [npm](https://www.npmjs.com/package/helmet) |
+
+## Pattern References
+| Pattern | Reference |
+|---|---|
+| Middleware | [Express middleware guide](https://expressjs.com/en/guide/using-middleware.html) |
+
+## Further Reading
+- [Topic] — [Link] — Why this is relevant to this codebase
+```
+
+Omit any column that would be empty for all rows in a table. Only include the
+"Further Reading" section when there are genuinely useful supplementary resources
+beyond docs and registries.
 
 ### Phase 3: Concepts & Index
 
@@ -153,7 +230,23 @@ Write sections in this order (each builds on the previous):
    Map of Content. Include: source type, date analyzed, one-line summary,
    link to overview.
 
-### Phase 4: Report
+### Phase 4: Commit & Push
+
+The educator-briefs vault is a git repo. After writing all files, commit and push:
+
+1. `cd ~/.claude/educator-briefs` (use the symlink path, not the /mnt/ path)
+2. Create a branch: `git checkout -b brief/<project-name>`
+3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md`
+4. Commit: `git commit -m "feat(<project-name>): add educational brief"`
+5. Push: `git push -u origin brief/<project-name>`
+6. Create PR: `gh pr create --title "feat(<project-name>): add educational brief" --body "New analysis of <project-name>" --fill`
+7. Merge: `gh pr merge --squash --delete-branch`
+8. Return to main: `git checkout main && git pull`
+
+If the brief is an **update** to an existing project, use the commit message
+`chore(<project-name>): update educational brief` instead.
+
+### Phase 5: Report
 
 Present to the user:
 - Vault location
