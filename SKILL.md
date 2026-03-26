@@ -32,6 +32,23 @@ For GitHub repos: `git clone --depth 1 <url> /tmp/educator-<name>` (shallow clon
 
 After analysis, always clean up any temp directories.
 
+### Source URL Resolution
+
+Many features (code example links, relevant file lists) need a base URL to link
+back to source files. Resolve this once during source detection and reuse it:
+
+| Source type | Base URL | File link pattern |
+|---|---|---|
+| GitHub repo | The input URL (e.g., `https://github.com/expressjs/express`) | `<base>/blob/main/<filepath>` (verify default branch with `git rev-parse --abbrev-ref HEAD`) |
+| Local project with GitHub remote | Run `git remote get-url origin` and convert `git@github.com:owner/repo.git` → `https://github.com/owner/repo` | Same blob pattern |
+| npm/PyPI with `repository` field | Read from package.json `repository.url` or pyproject.toml `[project.urls]` | Same blob pattern if GitHub |
+| Local project, no remote | None — use relative file paths only | `<filepath>` (no link) |
+| Website | N/A | N/A |
+
+Store the resolved base URL (or `null`) for use in Phases 2-3. When no URL is
+available, code examples and relevant file lists still reference paths — they
+just aren't clickable links.
+
 ## Vault Structure
 
 All output goes to `~/.claude/educator-briefs/`. This is an Obsidian vault.
@@ -134,6 +151,12 @@ Write each section file using the templates in `references/section-guide.md`.
 - Be honest about uncertainty: "This appears to be..." rather than asserting
   intent you can't verify from code alone
 - **Embed resource links inline** — see "Resource Linking" below
+- **Relevant files header** — After the YAML properties block, list the key
+  source files for this section (see "Relevant Files" below). Omit for sections
+  that don't map to specific files (`_overview.md`, `if-starting-over.md`,
+  `resources.md`).
+- **Code examples with source attribution** — Include short, illustrative code
+  snippets (see "Code Examples" below). Every snippet links back to its source.
 
 Write sections in this order (each builds on the previous):
 1. `architecture.md`
@@ -221,6 +244,74 @@ collected and organized:
 Omit any column that would be empty for all rows in a table. Only include the
 "Further Reading" section when there are genuinely useful supplementary resources
 beyond docs and registries.
+
+### Relevant Files
+
+Each section (where applicable) starts with a **Relevant Files** block immediately
+after the YAML properties. This gives the reader direct access to the source files
+that informed the section.
+
+**Format when a source URL is available (GitHub, etc.):**
+
+```markdown
+> **Relevant files:**
+> [`<path>`](<base-url>/blob/<branch>/<path>) ·
+> [`<path>`](<base-url>/blob/<branch>/<path>) ·
+> [`<path>`](<base-url>/blob/<branch>/<path>)
+```
+
+**Format when no source URL is available (local project, no remote):**
+
+```markdown
+> **Relevant files:** `<path>` · `<path>` · `<path>`
+```
+
+Rules:
+- List 3-7 files — the most important ones for the section, not every file touched
+- Use the blockquote format so it renders as a distinct callout in Obsidian
+- Paths are relative to the project root
+- Omit this block for: `_overview.md`, `if-starting-over.md`, `resources.md`
+  (these don't map to specific source files)
+
+### Code Examples
+
+Include short code snippets to illustrate key points — patterns, decisions,
+techniques, anti-patterns. Code makes the analysis concrete and verifiable.
+
+**Format with source URL:**
+
+````markdown
+```<language>
+// <path>#L<start>-L<end>
+<code snippet>
+```
+<sub>[source](<base-url>/blob/<branch>/<path>#L<start>-L<end>)</sub>
+````
+
+**Format without source URL:**
+
+````markdown
+```<language>
+// <path>#L<start>-L<end>
+<code snippet>
+```
+<sub>source: `<path>` lines <start>-<end></sub>
+````
+
+Rules:
+- **Keep snippets short** — 5-15 lines. Trim to the essential part. Use `// ...`
+  to elide irrelevant lines.
+- **Always include the file path and line numbers** in a comment on the first line
+  of the code block AND in the `<sub>` attribution below it
+- **GitHub line links** use the `#L15-L28` fragment format for ranges
+- **Choose snippets that teach** — show the pattern, the decision, or the problem.
+  Don't include code just to prove you read it.
+- **Every section should have at least 1-2 code examples** where the section
+  discusses concrete implementation details (architecture, design-patterns,
+  key-decisions, testing-strategy, gaps-vulnerabilities, evolution)
+- Sections that are more analytical than code-specific (technology-choices,
+  dependencies, if-starting-over, learning-path, glossary) may include examples
+  where they help but aren't required to
 
 ### Phase 3: Concepts & Index
 
