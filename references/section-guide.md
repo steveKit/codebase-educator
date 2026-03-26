@@ -305,32 +305,39 @@ jargon, architectural terminology) that a reader might not know.
 
 ---
 
-## overview.md
+## _overview.md
 
 **Goal:** Executive summary that serves as the entry point to the brief.
+Named with `_` prefix so it sorts to the top of the project folder in Obsidian.
 
 Written **last** because it summarizes all other sections.
 
 ### Structure
 
-1. **One-Paragraph Summary** — What this is, what it does, why it's interesting
+1. **Source** — A prominent link at the top of the file, before any analysis:
+   - GitHub repo → `**Source:** [owner/repo](https://github.com/owner/repo)`
+   - Website → `**Source:** [domain.com](https://domain.com)`
+   - npm package → `**Source:** [package](https://www.npmjs.com/package/<name>)`
+   - PyPI package → `**Source:** [package](https://pypi.org/project/<name>/)`
+   - Local path or current project → `**Source:** local`
+2. **One-Paragraph Summary** — What this is, what it does, why it's interesting
    to study
-2. **Source Quality** — Prominent banner showing the overall quality rating
+3. **Source Quality** — Prominent banner showing the overall quality rating
    (exemplary/solid/mixed/cautionary) with a one-sentence explanation. This
    tells the reader upfront how to interpret everything that follows.
    See `references/quality-assessment.md` for banner format.
-3. **Key Takeaways** — 3-5 bullet points: the most valuable lessons from this
+4. **Key Takeaways** — 3-5 bullet points: the most valuable lessons from this
    codebase
-4. **Architecture at a Glance** — Simplified Mermaid diagram (copied/condensed
+5. **Architecture at a Glance** — Simplified Mermaid diagram (copied/condensed
    from architecture.md)
-4. **Section Index** — Links to all sections with one-line descriptions and
+6. **Section Index** — Links to all sections with one-line descriptions and
    difficulty tags:
    - `[[<project>/architecture]]` — System structure and layers *(intermediate)*
    - `[[<project>/technology-choices]]` — Stack decisions *(beginner)*
    - ... etc.
-5. **Concepts Introduced** — List of all `[[concept]]` pages referenced in
+7. **Concepts Introduced** — List of all `[[concept]]` pages referenced in
    this analysis, grouped by category
-6. **Cross-Project Connections** — If other analyses exist in the vault,
+8. **Cross-Project Connections** — If other analyses exist in the vault,
    note which concepts this project shares with them. **This section is
    bidirectional** — Phase 3 also updates the other project's overview
    with a reciprocal connection block pointing back to this project.

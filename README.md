@@ -10,7 +10,7 @@ Each analysis generates a project folder with 12 documents:
 
 | Document | What You Learn |
 |----------|----------------|
-| **overview.md** | Executive summary, quality rating, key takeaways |
+| **_overview.md** | Executive summary, source link, quality rating, key takeaways |
 | **architecture.md** | System structure, layers, data flow (with Mermaid diagrams) |
 | **technology-choices.md** | Stack decisions — what was chosen, why, and what the alternatives were |
 | **design-patterns.md** | Patterns in use, quality of application, anti-patterns spotted |

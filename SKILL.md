@@ -53,7 +53,7 @@ a timestamped version (e.g., `my-app-2026-03`).
 
 ```
 <project-name>/
-├── overview.md              # Executive summary + wikilinks to all sections
+├── _overview.md             # Executive summary + wikilinks to all sections
 ├── architecture.md          # System structure, layers, data flow
 ├── technology-choices.md    # Stack decisions with rationale and trade-offs
 ├── design-patterns.md       # Patterns in use, quality of application
@@ -148,7 +148,7 @@ Write sections in this order (each builds on the previous):
 10. `learning-path.md`
 11. `glossary.md`
 12. `resources.md` (consolidated link reference)
-13. `overview.md` (last — it summarizes everything above)
+13. `_overview.md` (last — it summarizes everything above)
 
 ### Resource Linking
 
@@ -237,24 +237,24 @@ beyond docs and registries.
    - For each connection found, build a comparison entry: concept name, how each
      project uses it, and what the contrast teaches
    - Write the "## Cross-Project Connections" block in the **new** project's
-     `overview.md` (this already happens in Phase 2 via section-guide.md)
-   - **Also update each connected existing project's `overview.md`**: append or
+     `_overview.md` (this already happens in Phase 2 via section-guide.md)
+   - **Also update each connected existing project's `_overview.md`**: append or
      update its "## Cross-Project Connections" section to include a reciprocal
      entry linking back to the new project. If the section doesn't exist yet
      (older briefs created before this rule), create it at the end of the file
      before any trailing `---`
    - Format for each connection block:
      ```
-     Concepts shared with [[<other-project>/overview|<Display Name>]]:
+     Concepts shared with [[<other-project>/_overview|<Display Name>]]:
      - **<Concept>** — <how this project uses it>; <how the other project uses it>.
        <What the contrast teaches.>
      ```
-   - Stage the modified existing `overview.md` files alongside the new project
+   - Stage the modified existing `_overview.md` files alongside the new project
      files in the commit (Phase 4 step 3)
 
 3. **Update `_index.md`** — Add or update the entry for this project in the
    Map of Content. Include: source type, date analyzed, one-line summary,
-   link to overview.
+   link to `_overview`.
 
 4. **Link validation** — After writing all files, verify link integrity:
    - Grep all `[[wikilinks]]` from the project's section files
@@ -277,7 +277,7 @@ The educator-briefs vault is a git repo. After writing all files, commit and pus
 
 1. `cd ~/.claude/educator-briefs` (use the symlink path, not the /mnt/ path)
 2. Create a branch: `git checkout -b brief/<project-name>`
-3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md` — also stage any existing project `overview.md` files that were updated with reciprocal cross-project connections
+3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md` — also stage any existing project `_overview.md` files that were updated with reciprocal cross-project connections
 4. Commit: `git commit -m "feat(<project-name>): add educational brief"`
 5. Push: `git push -u origin brief/<project-name>`
 6. Create PR: `gh pr create --title "feat(<project-name>): add educational brief" --body "New analysis of <project-name>" --fill`
