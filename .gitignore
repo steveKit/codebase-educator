@@ -1,0 +1,13 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# The vault output is user-specific, not part of the skill
+# (it lives at ~/.claude/educator-briefs/)
