@@ -584,3 +584,7 @@ If no repo is discovered, fall back to external-only analysis:
   don't pretend it's beginner-friendly.
 - **Living vault.** The vault grows with each analysis. Concept pages accumulate
   cross-project evidence. The value compounds over time.
+- **Filename is `_overview.md`, not `overview.md`.** The underscore prefix is
+  intentional — it sorts the file to the top of the project folder in Obsidian.
+  **NEVER** create a file named `overview.md`. Every reference, wikilink, and
+  file write must use `_overview.md`.
