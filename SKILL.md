@@ -56,6 +56,7 @@ All output goes to `~/.claude/educator-briefs/`. This is an Obsidian vault.
 On **first ever run**, create:
 - `~/.claude/educator-briefs/_index.md` — Map of Content (MOC)
 - `~/.claude/educator-briefs/_concepts/` — shared concept directory
+- `~/.claude/educator-briefs/_concepts/_registry.yaml` — concept-to-project index (see Phase 3)
 
 Each analysis creates a **project subfolder** named after the source:
 - Local path → directory name (e.g., `my-app`)
@@ -105,10 +106,19 @@ a timestamped version (e.g., `my-app-2026-03`).
    for file creation order (reveals evolution)
 6. **Build technology URL index** — Before writing any sections, compile a lookup
    table of every significant technology in the stack. For each one, resolve:
-   - **Official site / docs URL** — use WebFetch to verify it resolves
+   - **Official site / docs URL** — construct from known patterns (see below)
    - **Registry URL** — construct from the predictable patterns in "URL Construction"
    - **Repository URL** — GitHub/GitLab link (often in package.json `repository`,
      pyproject.toml `[project.urls]`, Cargo.toml `[package]`, or go.mod module path)
+
+   **URL verification budget:** Most major technologies have stable, well-known
+   URLs that don't need runtime verification. Only use WebFetch to verify a URL
+   when the official docs site is not obvious from the technology name or registry
+   metadata (e.g., a lesser-known library with no `homepage` field in its package
+   manifest). For well-known technologies (major languages, popular frameworks,
+   databases), construct the URL directly — don't spend a WebFetch call confirming
+   that `https://www.typescriptlang.org/` still exists. When in doubt, link to
+   the registry page — it's always valid and always has a link to the real docs.
 
    This index is the **single source of truth** for links throughout all sections.
    Every section that mentions a technology pulls from this index rather than
@@ -241,9 +251,12 @@ For well-known registries, construct URLs directly — these follow predictable 
 | pkg.go.dev | `https://pkg.go.dev/<module>` | `https://pkg.go.dev/net/http` |
 | GitHub | `https://github.com/<owner>/<repo>` | `https://github.com/expressjs/express` |
 
-For official documentation sites, use WebFetch to verify the URL resolves before
-including it. If a docs URL can't be verified, link to the registry page instead —
-a working link to the right package is better than a broken link to the docs.
+For official documentation sites of well-known technologies, construct the URL
+directly without verification. For lesser-known libraries where the docs URL
+isn't obvious, check the `homepage` field in the package manifest or use one
+WebFetch call to verify. If a docs URL is uncertain, link to the registry page
+instead — a working link to the right package is better than a broken link to
+the docs.
 
 #### `resources.md` (consolidated)
 
@@ -346,20 +359,56 @@ Rules:
 
 ### Phase 3: Concepts & Index
 
-1. **Concept pages** — For every `[[concept-name]]` wikilink used in the
-   analysis, check if `~/.claude/educator-briefs/_concepts/<concept-name>.md`
-   exists. If not, create it using the template in `references/concept-template.md`.
-   If it already exists, **append** a backlink entry under "## Seen In" listing
-   this project and how it uses the concept.
+This phase uses `_concepts/_registry.yaml` — a machine-readable index mapping
+concept names to the projects that reference them. This avoids scanning every
+concept file as the vault grows.
 
-2. **Cross-project connections (bidirectional)** — After writing all concept
-   backlinks, identify which existing projects share concepts with the new one:
-   - Scan `_concepts/` for concept pages whose "## Seen In" section now lists
-     **both** the new project and one or more existing projects
-   - For each connection found, build a comparison entry: concept name, how each
-     project uses it, and what the contrast teaches
+**Registry format:**
+
+```yaml
+# _concepts/_registry.yaml
+# Auto-maintained by codebase-educator. Do not edit manually.
+middleware:
+  - expressjs--express
+  - fastify--fastify
+dependency-injection:
+  - expressjs--express
+  - spring-petclinic--spring-petclinic
+testing-pyramid:
+  - fastify--fastify
+```
+
+Each key is a concept name (matching the filename without `.md`). Each value
+is a list of project subfolder names that reference the concept.
+
+**Bootstrap:** If `_registry.yaml` doesn't exist (older vault), build it once
+by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
+
+**Steps:**
+
+1. **Load registry** — Read `_concepts/_registry.yaml` into memory.
+
+2. **Collect concept list** — Gather every `[[concept-name]]` wikilink used
+   across all sections written in Phase 2. Deduplicate.
+
+3. **Concept pages** — For each concept in the list:
+   - **Check the registry** (not the filesystem) to see if the concept exists.
+   - If the concept is **not** in the registry → create the page using
+     `references/concept-template.md`, then add the concept to the registry
+     with this project as its first entry.
+   - If the concept **is** in the registry → append a backlink entry under
+     "## Seen In" in the existing concept page, then add this project to the
+     concept's registry list.
+
+4. **Cross-project connections (bidirectional)** — Use the registry to find
+   connections. No file scanning needed:
+   - Filter registry entries where the value list contains **both** the new
+     project and one or more other projects. These are the shared concepts.
+   - For each shared concept, read the concept page's "## Seen In" section
+     to get the usage descriptions for comparison (these are short — one line
+     per project).
    - Write the "## Cross-Project Connections" block in the **new** project's
-     `_overview.md` (this already happens in Phase 2 via section-guide.md)
+     `_overview.md` (already drafted in Phase 2 — update it now with real data)
    - **Also update each connected existing project's `_overview.md`**: append or
      update its "## Cross-Project Connections" section to include a reciprocal
      entry linking back to the new project. If the section doesn't exist yet
@@ -374,22 +423,28 @@ Rules:
    - Stage the modified existing `_overview.md` files alongside the new project
      files in the commit (Phase 4 step 3)
 
-3. **Update `_index.md`** — Add or update the entry for this project in the
+5. **Write registry** — Save the updated `_concepts/_registry.yaml` back to disk.
+   Stage it in the Phase 4 commit.
+
+6. **Update `_index.md`** — Add or update the entry for this project in the
    Map of Content. Include: source type, date analyzed, one-line summary,
    link to `_overview`.
 
-4. **Link validation** — After writing all files, verify link integrity:
+7. **Link validation** — Verify link integrity using the registry (no file I/O):
    - Grep all `[[wikilinks]]` from the project's section files
    - For each concept-style link (not `[[project/section]]` cross-refs),
-     confirm a matching file exists in `_concepts/`. If it doesn't, either
-     the concept page was missed in step 1 (create it now) or the link
-     target is wrong (fix it to match the existing concept file)
+     confirm the concept exists as a key in the registry. If it doesn't,
+     either the concept page was missed in step 3 (create it now) or the
+     link target is wrong (fix it to match an existing registry key)
+   - For `[[project/section]]` cross-refs, validate against the known section
+     filenames (fixed set: `architecture`, `technology-choices`, etc.) — no
+     file existence check needed
    - Links must be **lowercase-with-hyphens** — Obsidian treats
      `[[Ones-complement]]` and `[[ones-complement]]` as different pages.
      Use the Obsidian alias syntax for display names:
      `[[ones-complement|Ones-complement]]`
-   - If a broader concept file exists that covers the linked topic, use an
-     alias link rather than creating a near-duplicate:
+   - If a broader concept already exists in the registry that covers the
+     linked topic, use an alias link rather than creating a near-duplicate:
      `[[cooperative-multitasking|multitasking]]` not `[[multitasking]]`
    - **Every wikilink must resolve.** Zero orphan links in the final output.
 
@@ -399,7 +454,7 @@ The educator-briefs vault is a git repo. After writing all files, commit and pus
 
 1. `cd ~/.claude/educator-briefs` (use the symlink path, not the /mnt/ path)
 2. Create a branch: `git checkout -b brief/<project-name>`
-3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md` — also stage any existing project `_overview.md` files that were updated with reciprocal cross-project connections
+3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md` — this includes `_concepts/_registry.yaml` and any existing project `_overview.md` files updated with reciprocal cross-project connections
 4. Commit: `git commit -m "feat(<project-name>): add educational brief"`
 5. Push: `git push -u origin brief/<project-name>`
 6. Create PR: `gh pr create --title "feat(<project-name>): add educational brief" --body "New analysis of <project-name>" --fill`

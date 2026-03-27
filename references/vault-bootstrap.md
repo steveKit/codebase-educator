@@ -4,6 +4,22 @@ Templates for the vault-level files created on first run.
 
 ---
 
+## _concepts/_registry.yaml (Concept Index)
+
+```yaml
+# _concepts/_registry.yaml
+# Auto-maintained by codebase-educator. Do not edit manually.
+# Maps concept names to the projects that reference them.
+# Used for cross-project connection lookups and link validation.
+```
+
+Create this empty file (with only the header comments) on first run. It is
+populated incrementally as briefs are written. If the vault already has
+concept pages but no registry (pre-existing vault), build the registry by
+scanning `_concepts/*.md` for "## Seen In" entries before proceeding.
+
+---
+
 ## _index.md (Map of Content)
 
 ```markdown
