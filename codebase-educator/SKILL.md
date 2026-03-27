@@ -3,7 +3,7 @@ name: codebase-educator
 description: Analyze a codebase and produce an educational brief covering architecture, technology choices, design patterns, and gaps. Use when the user asks to "educate me on this codebase", "analyze this project for learning", "explain the architecture", "what can I learn from this code", or "codebase educator".
 argument-hint: "[source...] — one or more: local path, GitHub URL, website URL, npm:package, pypi:package, or omit for current project"
 disable-model-invocation: true
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 ---
 
 # Codebase Educator
@@ -132,6 +132,7 @@ When multiple sources are provided, run phases per-source then shared:
 | Phase 3 (Concepts) | **Once, across all sources** | Load registry once, process concepts from all sources in one pass, find cross-project connections (including between batch sources) |
 | Phase 4 (Commit) | **Once** | Single branch, single commit containing all sources |
 | Phase 5 (Report) | **Once** | Combined report covering all sources |
+| Phase 6 (Audit) | **Per source** | Dispatch educator-audit for each source via Agent tool |
 
 **Shared URL index:** If multiple sources use the same technology (e.g., two
 Node.js projects both use Express), the URL is resolved once and reused. Build
@@ -615,8 +616,29 @@ Present to the user:
 - Total count of new concept pages created
 - Any cross-project connections discovered (including between batch sources
   and with previously analyzed projects)
-- **Suggest running `/educator-audit <project-name>`** to validate link
-  integrity, registry consistency, and section quality
+### Phase 6: Audit
+
+After reporting, automatically dispatch the educator-audit skill to validate
+the brief. This runs in a fresh context via the Agent tool, which is the
+whole point — a separate pass catches what the creation process missed.
+
+1. For each source analyzed, dispatch via Agent tool:
+   ```
+   /educator-audit <project-name>
+   ```
+   - **Multi-source:** dispatch once per source, sequentially
+2. Let the audit run its full process (link integrity, registry consistency,
+   section quality). It will auto-fix structural issues and report quality
+   findings.
+3. After the audit completes, present its summary to the user alongside
+   the Phase 5 report. If the audit committed fixes, note that.
+4. If the audit found quality issues that need regeneration, list them
+   so the user can decide whether to address them now or later.
+
+**Do not skip this phase.** The audit exists because creation-time
+validation is unreliable. If the Agent tool is unavailable or the audit
+fails to dispatch, tell the user to run `/educator-audit <project-name>`
+manually.
 
 ### Website Source — Repo Discovery & Fallback
 
