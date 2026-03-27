@@ -326,3 +326,8 @@ For vault-wide audits, break down findings per project before the totals.
 - **Idempotent.** Running the audit twice in a row with no changes between
   runs should produce zero findings on the second run. If it doesn't,
   the audit has a bug.
+- **Ground every finding in evidence.** Every issue reported must
+  reference a specific file and the exact content that triggered it.
+  If a check is inconclusive (e.g., a URL cannot be verified within
+  the WebFetch budget), report it as "unverified" rather than
+  assuming pass or fail.
