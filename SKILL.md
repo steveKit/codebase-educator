@@ -1,7 +1,7 @@
 ---
 name: codebase-educator
 description: Analyze a codebase and produce an educational brief covering architecture, technology choices, design patterns, and gaps. Use when the user asks to "educate me on this codebase", "analyze this project for learning", "explain the architecture", "what can I learn from this code", or "codebase educator".
-argument-hint: "[source] — local path, GitHub URL, website URL, npm:package, pypi:package, or omit for current project"
+argument-hint: "[source...] — one or more: local path, GitHub URL, website URL, npm:package, pypi:package, or omit for current project"
 disable-model-invocation: true
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch]
 ---
@@ -17,7 +17,9 @@ file operations — the safety hook allowlists the resolved path.
 
 ## Source Detection
 
-Determine the source type from `$ARGUMENTS`:
+`$ARGUMENTS` may contain **one or more sources**, space-separated. Parse each
+token individually using the table below. If no argument is provided, the
+single source is the current working directory.
 
 | Input | Type | Method |
 |---|---|---|
@@ -87,6 +89,30 @@ a timestamped version (e.g., `my-app-2026-03`).
 ```
 
 ## Process
+
+### Multi-Source Batching
+
+When multiple sources are provided, run phases per-source then shared:
+
+| Phase | Scope | What happens |
+|---|---|---|
+| Phase 1 (Gather) | **Per source** | Resolve, scan, build URL index for each source sequentially |
+| Phase 1.5 (Quality) | **Per source** | Assess quality for each source |
+| Phase 2 (Write) | **Per source** | Write all section files for each source |
+| Phase 3 (Concepts) | **Once, across all sources** | Load registry once, process concepts from all sources in one pass, find cross-project connections (including between batch sources) |
+| Phase 4 (Commit) | **Once** | Single branch, single commit containing all sources |
+| Phase 5 (Report) | **Once** | Combined report covering all sources |
+
+**Shared URL index:** If multiple sources use the same technology (e.g., two
+Node.js projects both use Express), the URL is resolved once and reused. Build
+each source's URL index incrementally, checking the running index before
+making new lookups.
+
+**Temp directory cleanup:** Clean up each source's `/tmp/educator-<name>`
+after its Phase 2 completes — don't hold all clones in `/tmp/` simultaneously.
+
+For a single source, this collapses to the normal sequential flow with no
+overhead.
 
 ### Phase 1: Gather
 
@@ -454,8 +480,11 @@ The educator-briefs vault is a git repo. After writing all files, commit and pus
 
 1. `cd ~/.claude/educator-briefs` (use the symlink path, not the /mnt/ path)
 2. Create a branch: `git checkout -b brief/<project-name>`
+   - **Multi-source:** use `brief/batch-YYYY-MM-DD` (e.g., `brief/batch-2026-03-27`)
 3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md` — this includes `_concepts/_registry.yaml` and any existing project `_overview.md` files updated with reciprocal cross-project connections
+   - **Multi-source:** stage all project folders: `git add <project-1>/ <project-2>/ ... _concepts/ _index.md`
 4. Commit: `git commit -m "feat(<project-name>): add educational brief"`
+   - **Multi-source:** `git commit -m "feat(batch): add briefs for <project-1>, <project-2>, ..."`
 5. Push: `git push -u origin brief/<project-name>`
 6. Create PR: `gh pr create --title "feat(<project-name>): add educational brief" --body "New analysis of <project-name>" --fill`
 7. Merge: `gh pr merge --squash --delete-branch`
@@ -468,10 +497,11 @@ If the brief is an **update** to an existing project, use the commit message
 
 Present to the user:
 - Vault location
-- Brief summary (3-5 key findings)
+- **Per source:** brief summary (3-5 key findings each)
 - Suggestion to open `~/.claude/educator-briefs/` as an Obsidian vault
-- Count of new concept pages created
-- Any cross-project connections discovered (concepts shared with previously analyzed projects)
+- Total count of new concept pages created
+- Any cross-project connections discovered (including between batch sources
+  and with previously analyzed projects)
 
 ### Website Source — Repo Discovery & Fallback
 
