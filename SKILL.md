@@ -56,7 +56,37 @@ just aren't clickable links.
 All output goes to `~/.claude/educator-briefs/`. This is an Obsidian vault.
 
 On **first ever run**, create:
-- `~/.claude/educator-briefs/_index.md` — Map of Content (MOC)
+- `~/.claude/educator-briefs/_index.md` — Map of Content (MOC), using this template:
+
+  ```markdown
+  # Educator Briefs — Map of Content
+
+  A growing vault of educational analyses. Open any project overview to start
+  exploring.
+
+  ## How to Use This Vault
+
+  1. Pick a project from the table below and open its overview
+  2. Follow `[[wikilinks]]` to concept pages for cross-project learning
+  3. Use Obsidian's Graph View to see how concepts connect across projects
+  4. Concepts grow richer with each new analysis — revisit them over time
+
+  ## Projects
+
+  | Project | Source Type | Date | Summary |
+  |---|---|---|---|
+
+  ## Concepts by Category
+
+  *Maintained by the codebase-educator skill as analyses are added.*
+
+  ### Architecture
+  ### Patterns
+  ### Philosophy
+  ### Practice
+  ### Principles
+  ```
+
 - `~/.claude/educator-briefs/_concepts/` — shared concept directory
 - `~/.claude/educator-briefs/_concepts/_registry.yaml` — concept-to-project index (see Phase 3)
 
@@ -238,6 +268,18 @@ learn from a 30-second glance at the repo. Use these floors:
 If a section would be thin (e.g., no test files exist for testing-strategy),
 **say so explicitly and explain what the absence reveals** rather than writing a
 stub. A missing testing strategy is itself a substantive finding.
+
+**Inline link checklist (run after writing all sections):**
+
+For each section file, verify:
+1. Every technology/framework/library/tool is hyperlinked on first mention
+2. Links use the technology URL index from Phase 1 (no ad hoc URL construction)
+3. `technology-choices.md` Stack Summary table has clickable links in every row
+4. `dependencies.md` has registry + docs links for every dependency discussed
+5. `glossary.md` has docs links for framework-specific jargon
+6. `gaps-vulnerabilities.md` links to guides for addressing each gap
+
+Then verify `resources.md` contains every unique URL from all sections.
 
 Write sections in this order (each builds on the previous):
 1. `architecture.md`
@@ -490,6 +532,11 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
      "## Seen In" in the existing concept page, then add this project to the
      concept's registry list.
 
+   **Backlink format:** In concept page "Seen In" entries, always link to the
+   project's `_overview.md` using the alias syntax:
+   `[[<project-name>/_overview|<project-name>]]`. A bare `[[<project-name>]]`
+   resolves to nothing in Obsidian since the project is a folder, not a file.
+
    **Batch for efficiency:** Group new concepts and write them in quick
    succession rather than interleaving reads/writes. For existing concepts
    that need a backlink appended, batch the Edit calls.
@@ -522,7 +569,13 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
 
 6. **Update `_index.md`** — Add or update the entry for this project in the
    Map of Content. Include: source type, date analyzed, one-line summary,
-   link to `_overview`.
+   link to `_overview`. Also update the "Concepts by Category" section with
+   any new concept pages.
+
+   When updating `_index.md`, count the actual concept pages created (check the
+   registry), not the number listed in `_overview.md`'s Concepts Introduced
+   section. The two lists must agree — if they don't, fix the discrepancy before
+   committing.
 
 7. **Link validation** — Verify link integrity using the registry (no file I/O):
    - Grep all `[[wikilinks]]` from the project's section files
@@ -540,6 +593,11 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
    - If a broader concept already exists in the registry that covers the
      linked topic, use an alias link rather than creating a near-duplicate:
      `[[cooperative-multitasking|multitasking]]` not `[[multitasking]]`
+   - **Speculative mentions:** If a section mentions a concept speculatively
+     ("this may use X", "we can't confirm whether Y exists"), do NOT wikilink
+     it. Only wikilink concepts that the analysis actually discusses or
+     demonstrates. A wikilink is a commitment to create a concept page — don't
+     link what you won't create.
    - **Every wikilink must resolve.** Zero orphan links in the final output.
 
 ### Phase 4: Commit & Push
@@ -622,6 +680,17 @@ If no repo is discovered, fall back to external-only analysis:
 4. Mark analysis as "external observation only" in the overview
 5. Focus on: technology choices, observable architecture, design patterns in
    the UI/UX layer, and what the public-facing choices reveal about priorities
+
+When writing sections for any external-observation source (website with no
+repo, or any source where code access fails):
+
+- **Code examples:** Omit. Add a note in `_overview.md` body:
+  "Code examples are not included — no source code is publicly available."
+- **Relevant files header:** Omit the blockquote entirely. The absence is
+  self-explanatory for external observation.
+- **Minimum depth:** Word count minimums still apply. The absence of code
+  examples should be compensated with deeper analytical prose, Mermaid
+  diagrams, and external resource links.
 
 ## Cleanup
 
