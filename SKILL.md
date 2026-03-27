@@ -125,12 +125,28 @@ overhead.
    - Test directories and config
 3. **Map the dependency graph** — read import/require statements in key files,
    trace the module structure, identify layers and boundaries
-4. **Sample depth** — read 3-5 files from different areas of the codebase to
-   understand coding style, error handling, and patterns in practice
-5. **Check history clues** (if git repo) — `git log --oneline -20` for recent
+4. **Sample depth** — read files from different areas of the codebase to
+   understand coding style, error handling, and patterns in practice.
+   Scale sampling with project size:
+
+   | Project size | Sample target | Strategy |
+   |---|---|---|
+   | Small (<20 source files) | Read most files | Near-complete coverage is feasible |
+   | Medium (20-100 files) | 8-15 files | Cover every layer/module, not just entry points |
+   | Large (100+ files) | 15-25 files | Use Glob to discover, then sample each subsystem |
+
+   Use Glob to discover files by pattern (e.g., `**/*.ts`, `**/routes/**`)
+   then batch Read calls rather than exploring one file at a time. Prioritize:
+   files with the most imports (hub modules), files at architectural boundaries,
+   and files that are unusual or unexpected for the stack.
+5. **Read test files** — read 2-3 actual test files (not just test config).
+   Choose tests for core business logic, not trivial utility tests. The
+   testing-strategy section depends on seeing real test code — mocking
+   approaches, assertion styles, what's tested vs. what's skipped.
+6. **Check history clues** (if git repo) — `git log --oneline -20` for recent
    activity patterns; `git log --diff-filter=A --name-only --format="" | head -30`
    for file creation order (reveals evolution)
-6. **Build technology URL index** — Before writing any sections, compile a lookup
+7. **Build technology URL index** — Before writing any sections, compile a lookup
    table of every significant technology in the stack. For each one, resolve:
    - **Official site / docs URL** — construct from known patterns (see below)
    - **Registry URL** — construct from the predictable patterns in "URL Construction"
@@ -207,6 +223,21 @@ Write each section file using the templates in `references/section-guide.md`.
   `resources.md`).
 - **Code examples with source attribution** — Include short, illustrative code
   snippets (see "Code Examples" below). Every snippet links back to its source.
+
+**Minimum depth expectations:**
+
+Every section must be substantive enough to teach something the reader couldn't
+learn from a 30-second glance at the repo. Use these floors:
+
+| Section category | Min depth | Code examples |
+|---|---|---|
+| **Implementation-heavy** (architecture, design-patterns, key-decisions, testing-strategy, gaps-vulnerabilities) | 300+ words of analysis, multiple subsections | 3-5 code snippets grounding observations in real source |
+| **Analytical** (technology-choices, dependencies, evolution, if-starting-over) | 200+ words, structured analysis with evidence | 1-3 code snippets where they illustrate a point |
+| **Reference** (learning-path, glossary, resources, _overview) | Complete coverage of all items | N/A — these are indexes, not analysis |
+
+If a section would be thin (e.g., no test files exist for testing-strategy),
+**say so explicitly and explain what the absence reveals** rather than writing a
+stub. A missing testing strategy is itself a substantive finding.
 
 Write sections in this order (each builds on the previous):
 1. `architecture.md`
@@ -376,12 +407,45 @@ Rules:
 - **GitHub line links** use the `#L15-L28` fragment format for ranges
 - **Choose snippets that teach** — show the pattern, the decision, or the problem.
   Don't include code just to prove you read it.
-- **Every section should have at least 1-2 code examples** where the section
-  discusses concrete implementation details (architecture, design-patterns,
-  key-decisions, testing-strategy, gaps-vulnerabilities, evolution)
-- Sections that are more analytical than code-specific (technology-choices,
-  dependencies, if-starting-over, learning-path, glossary) may include examples
-  where they help but aren't required to
+- **Implementation-heavy sections** (architecture, design-patterns, key-decisions,
+  testing-strategy, gaps-vulnerabilities) need **3-5 code examples each**. These
+  sections make claims about how the code works — the snippets are the evidence.
+- **Analytical sections** (technology-choices, dependencies, evolution,
+  if-starting-over) should include **1-3 code examples** where they ground an
+  observation in real source (e.g., showing a config choice, a dependency usage
+  pattern, or an evolution artifact).
+- **Reference sections** (learning-path, glossary, resources, _overview) don't
+  need code examples.
+
+### Mermaid Validation
+
+After writing all sections, validate every Mermaid diagram. Broken diagrams
+render as raw syntax in Obsidian — the reader sees code instead of a chart.
+
+Common errors to check:
+- **Missing node IDs** — `A --> B` requires both A and B to be defined
+- **Unclosed subgraphs** — every `subgraph` needs an `end`
+- **Special characters in labels** — parentheses, brackets, and quotes in node
+  labels must be wrapped: `A["Label with (parens)"]`
+- **Duplicate node IDs** — each ID must be unique within a diagram
+- **Direction declaration** — `graph TD`, `graph LR`, etc. must be the first line
+
+For each diagram, mentally trace the syntax: declaration → nodes → edges →
+subgraphs closed → styles applied. Fix any errors in place before moving to
+Phase 3.
+
+### `resources.md` as Collection
+
+`resources.md` is a **collection task, not a reconstruction task**. Every link
+it contains was already placed inline during section writing. To write it:
+
+1. Grep the written section files for markdown links (`[text](url)`)
+2. Deduplicate and categorize into the resources.md structure
+3. Fill any gaps (a dependency mentioned in `dependencies.md` prose but
+   never linked inline should get its registry/docs links here)
+
+Do not re-research URLs — the technology URL index from Phase 1 and the
+inline links from Phase 2 are the source of truth.
 
 ### Phase 3: Concepts & Index
 
@@ -425,6 +489,10 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
    - If the concept **is** in the registry → append a backlink entry under
      "## Seen In" in the existing concept page, then add this project to the
      concept's registry list.
+
+   **Batch for efficiency:** Group new concepts and write them in quick
+   succession rather than interleaving reads/writes. For existing concepts
+   that need a backlink appended, batch the Edit calls.
 
 4. **Cross-project connections (bidirectional)** — Use the registry to find
    connections. No file scanning needed:
