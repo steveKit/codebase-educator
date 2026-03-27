@@ -17,8 +17,10 @@ connect, and where data flows.
    See `references/diagram-guide.md` for Mermaid patterns.
 2. **Layer Map** — Identify the architectural layers (presentation, business logic,
    data access, infrastructure). Note which boundaries are clean vs. leaky.
-3. **Data Flow** — Trace 1-2 key operations from input to output. Show which
-   modules touch the data and in what order.
+3. **Data Flow** — Trace key operations from input to output. Show which
+   modules touch the data and in what order. Scale with system complexity:
+   simple CRUD → 2 traces; systems with auth, payments, background jobs,
+   or distinct user flows → 3-5 traces covering each major path.
 4. **Concurrency Model** — If applicable: threading, async, event loop, workers.
 5. **Why This Matters** — Explain the general principles of structural architecture.
    What makes a good layer boundary? Why does data flow direction matter?
@@ -285,6 +287,12 @@ knowing what this codebase teaches?
    criticize but to internalize trade-off evaluation. Every "I'd do it differently"
    is a principle you can apply to your next project.
 
+### Concepts to Link
+
+`[[technical-debt]]`, `[[yagni]]`, `[[essential-complexity]]`,
+`[[accidental-complexity]]`, `[[evolutionary-architecture]]`,
+`[[strangler-fig-pattern]]`, `[[boring-technology]]`, etc.
+
 ---
 
 ## learning-path.md
@@ -301,6 +309,12 @@ knowing what this codebase teaches?
 6. **Estimated Time** — Rough time estimate for each phase of the reading list
 
 Each entry: file path, what you'll learn from it, difficulty tag, prereqs.
+
+### Concepts to Link
+
+`[[separation-of-concerns]]`, `[[layered-architecture]]`,
+`[[dependency-inversion]]`, `[[domain-driven-design]]`, etc.
+Link concepts that appear as prerequisites or learning objectives in the path.
 
 ---
 
@@ -328,6 +342,19 @@ Named with `_` prefix so it sorts to the top of the project folder in Obsidian.
 
 Written **last** because it summarizes all other sections.
 
+### Frontmatter
+
+Like all sections, `_overview.md` starts with a YAML properties block:
+
+```yaml
+---
+source: <project-name>
+section: overview
+difficulty: beginner
+quality-note: <overall quality rating and one-line summary>
+---
+```
+
 ### Structure
 
 1. **Source** — A prominent link at the top of the file, before any analysis:
@@ -342,37 +369,22 @@ Written **last** because it summarizes all other sections.
    (exemplary/solid/mixed/cautionary) with a one-sentence explanation. This
    tells the reader upfront how to interpret everything that follows.
    See `references/quality-assessment.md` for banner format.
-4. **Core Stack** — A table linking every major technology to its official
-   site and registry. This is the reader's quick-reference for the entire
-   stack — every technology should be a clickable link. Use the technology
-   URL index built in Phase 1. Format:
-
-   ```markdown
-   ## Core Stack
-
-   | Technology | Role | Official Site | Registry |
-   |---|---|---|---|
-   | [<Language>](<homepage>) | Language | [Docs](<docs-url>) | — |
-   | [<Framework>](<homepage>) | Web framework | [API Reference](<api-url>) | [<registry>](<registry-url>) |
-   | [<Database>](<homepage>) | Database | [Docs](<docs-url>) | — |
-   | [<Test framework>](<homepage>) | Test framework | [Docs](<docs-url>) | [<registry>](<registry-url>) |
-   ```
-
-   Include: language/runtime, framework, database, ORM/query builder, test
-   framework, build tool, and any other technology central to the project.
-   Omit the Registry column if no entries have one (e.g., pure Go project).
-5. **Key Takeaways** — 3-5 bullet points: the most valuable lessons from this
+4. **Key Takeaways** — 3-5 bullet points: the most valuable lessons from this
    codebase
-6. **Architecture at a Glance** — Simplified Mermaid diagram (copied/condensed
+5. **Architecture at a Glance** — Simplified Mermaid diagram (copied/condensed
    from architecture.md)
-7. **Section Index** — Links to all sections with one-line descriptions and
+6. **Section Index** — Links to all sections with one-line descriptions and
    difficulty tags:
    - `[[<project>/architecture]]` — System structure and layers *(intermediate)*
-   - `[[<project>/technology-choices]]` — Stack decisions *(beginner)*
+   - `[[<project>/technology-choices]]` — Stack decisions and full stack reference *(beginner)*
    - ... etc.
-8. **Concepts Introduced** — List of all `[[concept]]` pages referenced in
+
+   The full technology stack table lives in
+   `[[<project>/technology-choices]]` — the overview deliberately avoids
+   duplicating it so there's a single source of truth for stack details.
+7. **Concepts Introduced** — List of all `[[concept]]` pages referenced in
    this analysis, grouped by category
-9. **Cross-Project Connections** — If other analyses exist in the vault,
+8. **Cross-Project Connections** — If other analyses exist in the vault,
    note which concepts this project shares with them. **This section is
    bidirectional** — Phase 3 also updates the other project's overview
    with a reciprocal connection block pointing back to this project.
@@ -386,8 +398,8 @@ Written **last** because it summarizes all other sections.
 **Goal:** One-stop reference for all external links — official docs, repos,
 registries, and supplementary guides.
 
-Written **after all other sections** (except overview) because it consolidates
-links embedded throughout.
+Written **second-to-last** (before `_overview.md`) because it consolidates
+links already embedded throughout the other sections.
 
 ### Structure
 
