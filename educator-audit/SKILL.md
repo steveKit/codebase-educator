@@ -53,7 +53,7 @@ For each project's section files (`*.md` in the project folder):
 2. **Classify each link:**
    - `[[concept-name]]` or `[[concept-name|Display]]` → concept link
    - `[[project/section]]` or `[[project/section|Display]]` → cross-ref link
-   - `[[project/_overview|display]]` → project link (used in concept backlinks)
+   - `[[project/_<project-name>_overview|display]]` → project link (used in concept backlinks)
 3. **Validate concept links:**
    - Strip alias (`[[foo|Bar]]` → `foo`)
    - Check that `foo` exists as a key in the registry AND as a file
@@ -63,7 +63,7 @@ For each project's section files (`*.md` in the project folder):
    - If neither → **orphaned link** (fixable — see Phase 3)
 4. **Validate cross-ref links:**
    - `[[project/section]]` → verify `section` is one of the known section
-     filenames: `_overview`, `architecture`, `technology-choices`,
+     filenames: `_<project-name>_overview`, `architecture`, `technology-choices`,
      `design-patterns`, `key-decisions`, `gaps-vulnerabilities`,
      `dependencies`, `evolution`, `testing-strategy`, `if-starting-over`,
      `learning-path`, `glossary`, `resources`
@@ -141,7 +141,7 @@ For each concept in the registry:
 For each project in scope:
 
 1. Use the registry to find concepts shared with other projects
-2. Read the project's `_overview.md` "Cross-Project Connections" section
+2. Read the project's `_<project-name>_overview.md` "Cross-Project Connections" section
 3. **Missing connections** — shared concept exists but no connection block
    in either project's overview → fixable
 4. **One-directional connections** — project A mentions B but B doesn't
@@ -159,7 +159,7 @@ For each section file:
 | Check | Pass criteria |
 |---|---|
 | YAML frontmatter | Has `source`, `section`, `difficulty`, `quality-note` fields |
-| Relevant files block | Present (except `_overview`, `if-starting-over`, `resources`) |
+| Relevant files block | Present (except `_<project-name>_overview`, `if-starting-over`, `resources`) |
 | "Why This Matters" callout | Present at end of section |
 | Section file exists | All 13 expected files present in project folder |
 
@@ -169,7 +169,7 @@ For each section file:
 |---|---|---|
 | Implementation-heavy (`architecture`, `design-patterns`, `key-decisions`, `testing-strategy`, `gaps-vulnerabilities`) | 300 | 3 |
 | Analytical (`technology-choices`, `dependencies`, `evolution`, `if-starting-over`) | 200 | 1 |
-| Reference (`learning-path`, `glossary`, `resources`, `_overview`) | Complete coverage | 0 |
+| Reference (`learning-path`, `glossary`, `resources`, `_<project-name>_overview`) | Complete coverage | 0 |
 
 Count words (excluding YAML frontmatter and code blocks) and code fences per file.
 
@@ -228,17 +228,17 @@ For each orphaned concept link:
 
 #### 5d. Index Repairs
 
-- Add missing project rows to `_index.md` Projects table (read `_overview.md`
+- Add missing project rows to `_index.md` Projects table (read `_<project-name>_overview.md`
   for the summary and date)
 - Remove stale project rows
 - Add missing concepts to the "Concepts by Category" section
 
 #### 5e. Cross-Project Connection Repairs
 
-- Add missing reciprocal connection entries to `_overview.md` files
+- Add missing reciprocal connection entries to `_<project-name>_overview.md` files
 - Format matches the codebase-educator convention:
   ```
-  Concepts shared with [[<other-project>/_overview|<Display Name>]]:
+  Concepts shared with [[<other-project>/_<other-project>_overview|<Display Name>]]:
   - **<Concept>** — <how this project uses it>; <how the other uses it>.
   ```
 - For auto-generated entries, use the "Seen In" descriptions from concept pages
