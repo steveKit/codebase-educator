@@ -577,28 +577,15 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
    section. The two lists must agree — if they don't, fix the discrepancy before
    committing.
 
-7. **Link validation** — Verify link integrity using the registry (no file I/O):
-   - Grep all `[[wikilinks]]` from the project's section files
-   - For each concept-style link (not `[[project/section]]` cross-refs),
-     confirm the concept exists as a key in the registry. If it doesn't,
-     either the concept page was missed in step 3 (create it now) or the
-     link target is wrong (fix it to match an existing registry key)
-   - For `[[project/section]]` cross-refs, validate against the known section
-     filenames (fixed set: `architecture`, `technology-choices`, etc.) — no
-     file existence check needed
-   - Links must be **lowercase-with-hyphens** — Obsidian treats
-     `[[Ones-complement]]` and `[[ones-complement]]` as different pages.
-     Use the Obsidian alias syntax for display names:
-     `[[ones-complement|Ones-complement]]`
-   - If a broader concept already exists in the registry that covers the
-     linked topic, use an alias link rather than creating a near-duplicate:
+7. **Quick link checks** — Catch syntax errors before committing (cheap checks only):
+   - Links must be **lowercase-with-hyphens** — `[[ones-complement|Ones-complement]]`
+     not `[[Ones-complement]]`
+   - Prefer alias links to existing broad concepts over creating near-duplicates:
      `[[cooperative-multitasking|multitasking]]` not `[[multitasking]]`
-   - **Speculative mentions:** If a section mentions a concept speculatively
-     ("this may use X", "we can't confirm whether Y exists"), do NOT wikilink
-     it. Only wikilink concepts that the analysis actually discusses or
-     demonstrates. A wikilink is a commitment to create a concept page — don't
-     link what you won't create.
-   - **Every wikilink must resolve.** Zero orphan links in the final output.
+   - **No speculative links** — only wikilink concepts the analysis actually
+     discusses. A wikilink is a commitment to create a concept page.
+   - Comprehensive link validation (orphan detection, registry sync, external
+     URL checks) is handled by `/educator-audit` — see below.
 
 ### Phase 4: Commit & Push
 
@@ -628,6 +615,8 @@ Present to the user:
 - Total count of new concept pages created
 - Any cross-project connections discovered (including between batch sources
   and with previously analyzed projects)
+- **Suggest running `/educator-audit <project-name>`** to validate link
+  integrity, registry consistency, and section quality
 
 ### Website Source — Repo Discovery & Fallback
 
