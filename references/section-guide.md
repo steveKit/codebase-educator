@@ -37,7 +37,23 @@ the alternatives were.
 
 ### Structure
 
-1. **Stack Summary** — Table of language, framework, database, tooling choices
+1. **Stack Summary** — Table with linked technologies. Every technology name
+   must be a hyperlink to its official site, and include registry/repo links
+   where they exist. Pull from the technology URL index built in Phase 1.
+
+   ```markdown
+   | Category | Choice | Purpose | Links |
+   |---|---|---|---|
+   | Language | [<Language>](<homepage>) | <purpose> | [Docs](<docs-url>) |
+   | Framework | [<Framework>](<homepage>) | <purpose> | [Docs](<docs-url>) · [<registry>](<registry-url>) · [GitHub](<repo-url>) |
+   | Database | [<Database>](<homepage>) | <purpose> | [Docs](<docs-url>) |
+   | ORM | [<ORM>](<homepage>) | <purpose> | [Docs](<docs-url>) · [<registry>](<registry-url>) |
+   | Testing | [<Test framework>](<homepage>) | <purpose> | [Docs](<docs-url>) · [<registry>](<registry-url>) |
+   ```
+
+   The Links column uses `·` separators for multiple links in one cell.
+   This table is the definitive technology reference for the brief — readers
+   should be able to reach official docs for any part of the stack from here.
 2. **Decision Analysis** — For each major choice:
    - What was chosen
    - Likely rationale (infer from usage patterns, ecosystem, project needs)
@@ -326,18 +342,37 @@ Written **last** because it summarizes all other sections.
    (exemplary/solid/mixed/cautionary) with a one-sentence explanation. This
    tells the reader upfront how to interpret everything that follows.
    See `references/quality-assessment.md` for banner format.
-4. **Key Takeaways** — 3-5 bullet points: the most valuable lessons from this
+4. **Core Stack** — A table linking every major technology to its official
+   site and registry. This is the reader's quick-reference for the entire
+   stack — every technology should be a clickable link. Use the technology
+   URL index built in Phase 1. Format:
+
+   ```markdown
+   ## Core Stack
+
+   | Technology | Role | Official Site | Registry |
+   |---|---|---|---|
+   | [<Language>](<homepage>) | Language | [Docs](<docs-url>) | — |
+   | [<Framework>](<homepage>) | Web framework | [API Reference](<api-url>) | [<registry>](<registry-url>) |
+   | [<Database>](<homepage>) | Database | [Docs](<docs-url>) | — |
+   | [<Test framework>](<homepage>) | Test framework | [Docs](<docs-url>) | [<registry>](<registry-url>) |
+   ```
+
+   Include: language/runtime, framework, database, ORM/query builder, test
+   framework, build tool, and any other technology central to the project.
+   Omit the Registry column if no entries have one (e.g., pure Go project).
+5. **Key Takeaways** — 3-5 bullet points: the most valuable lessons from this
    codebase
-5. **Architecture at a Glance** — Simplified Mermaid diagram (copied/condensed
+6. **Architecture at a Glance** — Simplified Mermaid diagram (copied/condensed
    from architecture.md)
-6. **Section Index** — Links to all sections with one-line descriptions and
+7. **Section Index** — Links to all sections with one-line descriptions and
    difficulty tags:
    - `[[<project>/architecture]]` — System structure and layers *(intermediate)*
    - `[[<project>/technology-choices]]` — Stack decisions *(beginner)*
    - ... etc.
-7. **Concepts Introduced** — List of all `[[concept]]` pages referenced in
+8. **Concepts Introduced** — List of all `[[concept]]` pages referenced in
    this analysis, grouped by category
-8. **Cross-Project Connections** — If other analyses exist in the vault,
+9. **Cross-Project Connections** — If other analyses exist in the vault,
    note which concepts this project shares with them. **This section is
    bidirectional** — Phase 3 also updates the other project's overview
    with a reciprocal connection block pointing back to this project.
