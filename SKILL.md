@@ -473,7 +473,15 @@ If no repo is discovered, fall back to external-only analysis:
 ## Cleanup
 
 - Remove any `/tmp/educator-*` directories created during the process
-- Never leave cloned repos in `/tmp/`
+- Run `rm -rf /tmp/educator-<name>` and **check the exit code**
+- If deletion fails for any reason (permissions, busy file handle, etc.):
+  1. **Do not silently continue.** Tell the user the cleanup failed.
+  2. Provide the exact command to run manually:
+     ```
+     rm -rf /tmp/educator-<name>
+     ```
+  3. Explain why it may have failed if the error message gives a clue
+- Never leave cloned repos in `/tmp/` without the user knowing about it
 
 ## Guidelines
 
