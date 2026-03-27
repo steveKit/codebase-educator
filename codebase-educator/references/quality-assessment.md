@@ -107,7 +107,7 @@ Every section must present the correct alternative alongside the observation.
 
 The quality rating affects every section:
 
-### In the _overview.md
+### In the _\<project-name\>_overview.md
 
 Add a prominent quality banner immediately after the one-paragraph summary:
 

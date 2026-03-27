@@ -44,7 +44,7 @@ Obsidian's graph view to explore connections visually.
 
 ## How to Use This Vault
 
-1. **Start with a project overview** — each project folder has an `_overview.md`
+1. **Start with a project overview** — each project folder has a `_<project-name>_overview.md`
    that links to all sections (the `_` prefix keeps it sorted to the top)
 2. **Follow concept links** — `[[wikilinks]]` connect project observations to
    general principles in `_concepts/`

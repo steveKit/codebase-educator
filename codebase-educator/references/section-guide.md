@@ -335,16 +335,17 @@ jargon, architectural terminology) that a reader might not know.
 
 ---
 
-## _overview.md
+## _\<project-name\>_overview.md
 
 **Goal:** Executive summary that serves as the entry point to the brief.
-Named with `_` prefix so it sorts to the top of the project folder in Obsidian.
+Named with `_<project-name>_` prefix so it sorts to the top of the project folder
+in Obsidian and disambiguates overviews across the vault.
 
 Written **last** because it summarizes all other sections.
 
 ### Frontmatter
 
-Like all sections, `_overview.md` starts with a YAML properties block:
+Like all sections, `_<project-name>_overview.md` starts with a YAML properties block:
 
 ```yaml
 ---
@@ -398,7 +399,7 @@ quality-note: <overall quality rating and one-line summary>
 **Goal:** One-stop reference for all external links — official docs, repos,
 registries, and supplementary guides.
 
-Written **second-to-last** (before `_overview.md`) because it consolidates
+Written **second-to-last** (before `_<project-name>_overview.md`) because it consolidates
 links already embedded throughout the other sections.
 
 ### Structure

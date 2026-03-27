@@ -103,7 +103,7 @@ a timestamped version (e.g., `my-app-2026-03`).
 
 ```
 <project-name>/
-├── _overview.md             # Executive summary + wikilinks to all sections
+├── _<project-name>_overview.md  # Executive summary + wikilinks to all sections
 ├── architecture.md          # System structure, layers, data flow
 ├── technology-choices.md    # Stack decisions with rationale and trade-offs
 ├── design-patterns.md       # Patterns in use, quality of application
@@ -250,7 +250,7 @@ Write each section file using the templates in `references/section-guide.md`.
 - **Embed resource links inline** — see "Resource Linking" below
 - **Relevant files header** — After the YAML properties block, list the key
   source files for this section (see "Relevant Files" below). Omit for sections
-  that don't map to specific files (`_overview.md`, `if-starting-over.md`,
+  that don't map to specific files (`_<project-name>_overview.md`, `if-starting-over.md`,
   `resources.md`).
 - **Code examples with source attribution** — Include short, illustrative code
   snippets (see "Code Examples" below). Every snippet links back to its source.
@@ -264,7 +264,7 @@ learn from a 30-second glance at the repo. Use these floors:
 |---|---|---|
 | **Implementation-heavy** (architecture, design-patterns, key-decisions, testing-strategy, gaps-vulnerabilities) | 300+ words of analysis, multiple subsections | 3-5 code snippets grounding observations in real source |
 | **Analytical** (technology-choices, dependencies, evolution, if-starting-over) | 200+ words, structured analysis with evidence | 1-3 code snippets where they illustrate a point |
-| **Reference** (learning-path, glossary, resources, _overview) | Complete coverage of all items | N/A — these are indexes, not analysis |
+| **Reference** (learning-path, glossary, resources, overview) | Complete coverage of all items | N/A — these are indexes, not analysis |
 
 If a section would be thin (e.g., no test files exist for testing-strategy),
 **say so explicitly and explain what the absence reveals** rather than writing a
@@ -295,7 +295,7 @@ Write sections in this order (each builds on the previous):
 10. `learning-path.md`
 11. `glossary.md`
 12. `resources.md` (consolidated link reference)
-13. `_overview.md` (last — it summarizes everything above)
+13. `_<project-name>_overview.md` (last — it summarizes everything above)
 
 ### Resource Linking
 
@@ -414,7 +414,7 @@ Rules:
 - List 3-7 files — the most important ones for the section, not every file touched
 - Use the blockquote format so it renders as a distinct callout in Obsidian
 - Paths are relative to the project root
-- Omit this block for: `_overview.md`, `if-starting-over.md`, `resources.md`
+- Omit this block for: `_<project-name>_overview.md`, `if-starting-over.md`, `resources.md`
   (these don't map to specific source files)
 
 ### Code Examples
@@ -457,7 +457,7 @@ Rules:
   if-starting-over) should include **1-3 code examples** where they ground an
   observation in real source (e.g., showing a config choice, a dependency usage
   pattern, or an evolution artifact).
-- **Reference sections** (learning-path, glossary, resources, _overview) don't
+- **Reference sections** (learning-path, glossary, resources, overview) don't
   need code examples.
 
 ### Mermaid Validation
@@ -534,8 +534,8 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
      concept's registry list.
 
    **Backlink format:** In concept page "Seen In" entries, always link to the
-   project's `_overview.md` using the alias syntax:
-   `[[<project-name>/_overview|<project-name>]]`. A bare `[[<project-name>]]`
+   project's `_<project-name>_overview.md` using the alias syntax:
+   `[[<project-name>/_<project-name>_overview|<project-name>]]`. A bare `[[<project-name>]]`
    resolves to nothing in Obsidian since the project is a folder, not a file.
 
    **Batch for efficiency:** Group new concepts and write them in quick
@@ -550,19 +550,19 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
      to get the usage descriptions for comparison (these are short — one line
      per project).
    - Write the "## Cross-Project Connections" block in the **new** project's
-     `_overview.md` (already drafted in Phase 2 — update it now with real data)
-   - **Also update each connected existing project's `_overview.md`**: append or
+     `_<project-name>_overview.md` (already drafted in Phase 2 — update it now with real data)
+   - **Also update each connected existing project's `_<project-name>_overview.md`**: append or
      update its "## Cross-Project Connections" section to include a reciprocal
      entry linking back to the new project. If the section doesn't exist yet
      (older briefs created before this rule), create it at the end of the file
      before any trailing `---`
    - Format for each connection block:
      ```
-     Concepts shared with [[<other-project>/_overview|<Display Name>]]:
+     Concepts shared with [[<other-project>/_<other-project>_overview|<Display Name>]]:
      - **<Concept>** — <how this project uses it>; <how the other project uses it>.
        <What the contrast teaches.>
      ```
-   - Stage the modified existing `_overview.md` files alongside the new project
+   - Stage the modified existing `_<project-name>_overview.md` files alongside the new project
      files in the commit (Phase 4 step 3)
 
 5. **Write registry** — Save the updated `_concepts/_registry.yaml` back to disk.
@@ -570,11 +570,11 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
 
 6. **Update `_index.md`** — Add or update the entry for this project in the
    Map of Content. Include: source type, date analyzed, one-line summary,
-   link to `_overview`. Also update the "Concepts by Category" section with
+   link to the project's `_<project-name>_overview`. Also update the "Concepts by Category" section with
    any new concept pages.
 
    When updating `_index.md`, count the actual concept pages created (check the
-   registry), not the number listed in `_overview.md`'s Concepts Introduced
+   registry), not the number listed in `_<project-name>_overview.md`'s Concepts Introduced
    section. The two lists must agree — if they don't, fix the discrepancy before
    committing.
 
@@ -595,7 +595,7 @@ The educator-briefs vault is a git repo. After writing all files, commit and pus
 1. `cd ~/.claude/educator-briefs` (use the symlink path, not the /mnt/ path)
 2. Create a branch: `git checkout -b brief/<project-name>`
    - **Multi-source:** use `brief/batch-YYYY-MM-DD` (e.g., `brief/batch-2026-03-27`)
-3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md` — this includes `_concepts/_registry.yaml` and any existing project `_overview.md` files updated with reciprocal cross-project connections
+3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md` — this includes `_concepts/_registry.yaml` and any existing project `_<project-name>_overview.md` files updated with reciprocal cross-project connections
    - **Multi-source:** stage all project folders: `git add <project-1>/ <project-2>/ ... _concepts/ _index.md`
 4. Commit: `git commit -m "feat(<project-name>): add educational brief"`
    - **Multi-source:** `git commit -m "feat(batch): add briefs for <project-1>, <project-2>, ..."`
@@ -666,7 +666,7 @@ If a repo URL is discovered:
 1. Clone it as a GitHub repo source: `git clone --depth 1 <repo-url> /tmp/educator-<name>`
 2. Run the **full** analysis process (all phases, all sections)
 3. Set the source URL to the discovered repo for file links and code examples
-4. In `_overview.md`, note the discovery:
+4. In `_<project-name>_overview.md`, note the discovery:
    ```
    **Source:** [owner/repo](https://github.com/owner/repo)
    *(discovered via [domain.com](https://domain.com))*
@@ -695,7 +695,7 @@ If no repo is discovered, fall back to external-only analysis:
 When writing sections for any external-observation source (website with no
 repo, or any source where code access fails):
 
-- **Code examples:** Omit. Add a note in `_overview.md` body:
+- **Code examples:** Omit. Add a note in `_<project-name>_overview.md` body:
   "Code examples are not included — no source code is publicly available."
 - **Relevant files header:** Omit the blockquote entirely. The absence is
   self-explanatory for external observation.
@@ -732,7 +732,8 @@ repo, or any source where code access fails):
   don't pretend it's beginner-friendly.
 - **Living vault.** The vault grows with each analysis. Concept pages accumulate
   cross-project evidence. The value compounds over time.
-- **Filename is `_overview.md`, not `overview.md`.** The underscore prefix is
-  intentional — it sorts the file to the top of the project folder in Obsidian.
-  **NEVER** create a file named `overview.md`. Every reference, wikilink, and
-  file write must use `_overview.md`.
+- **Filename is `_<project-name>_overview.md`, not `_overview.md` or `overview.md`.**
+  The underscore prefix sorts the file to the top of the project folder in Obsidian,
+  and the project name disambiguates overviews across the vault. **NEVER** create a
+  file named `_overview.md` or `overview.md`. Every reference, wikilink, and file
+  write must use `_<project-name>_overview.md`.
