@@ -103,6 +103,20 @@ a timestamped version (e.g., `my-app-2026-03`).
 5. **Check history clues** (if git repo) — `git log --oneline -20` for recent
    activity patterns; `git log --diff-filter=A --name-only --format="" | head -30`
    for file creation order (reveals evolution)
+6. **Build technology URL index** — Before writing any sections, compile a lookup
+   table of every significant technology in the stack. For each one, resolve:
+   - **Official site / docs URL** — use WebFetch to verify it resolves
+   - **Registry URL** — construct from the predictable patterns in "URL Construction"
+   - **Repository URL** — GitHub/GitLab link (often in package.json `repository`,
+     pyproject.toml `[project.urls]`, Cargo.toml `[package]`, or go.mod module path)
+
+   This index is the **single source of truth** for links throughout all sections.
+   Every section that mentions a technology pulls from this index rather than
+   constructing URLs ad hoc. Build it now so writing is fast and consistent.
+
+   **Minimum coverage:** language runtime, framework, database/datastore, major
+   libraries (anything imported in 3+ files), build tools, test framework. Skip
+   trivial utilities used in one place.
 
 ### Phase 1.5: Quality Assessment
 
@@ -181,22 +195,39 @@ collects all links in one place.
 
 #### Inline Links (embedded in each section)
 
-As you write each section, link to external resources where they add value:
+**Every mention of a technology, framework, library, or tool should be a
+hyperlink on first mention in each section.** Use the technology URL index
+built in Phase 1 — this is why you built it. Subsequent mentions in the same
+section can be plain text.
 
-- **`technology-choices.md`** — Link to official docs/homepage for each major
-  technology choice (language, framework, database, etc.)
+Per-section linking requirements:
+
+- **`technology-choices.md`** — Stack Summary table must have clickable links
+  for every technology (see section-guide.md). Decision Analysis paragraphs
+  link to official docs on first mention of each technology.
+- **`architecture.md`** — Link frameworks and runtimes where they define the
+  architecture (e.g., link the framework when discussing its routing or
+  middleware pipeline).
 - **`design-patterns.md`** — Link to authoritative pattern references (e.g.,
-  refactoring.guru, language-specific pattern guides) for patterns discussed
-- **`dependencies.md`** — Link to each notable dependency's homepage, docs, and
-  repo (npm/PyPI/crates.io page, GitHub repo, official docs site)
-- **`testing-strategy.md`** — Link to testing framework docs
+  refactoring.guru, language-specific pattern guides) for patterns discussed.
+  Link to framework docs when a pattern is framework-provided.
+- **`dependencies.md`** — Every dependency in the analysis gets its registry
+  link, repo link, and docs link (where they exist). This section should be
+  the most link-dense in the brief.
+- **`testing-strategy.md`** — Link to testing framework and assertion library docs.
 - **`gaps-vulnerabilities.md`** — Link to relevant guides for addressing gaps
-  (e.g., OWASP guides, caching strategy articles)
-- **`learning-path.md`** — Link to prerequisite reading for advanced topics
+  (e.g., OWASP guides, caching strategy articles).
+- **`learning-path.md`** — Link to prerequisite reading for advanced topics.
+  Link to official "getting started" guides for technologies the reader needs
+  to learn.
+- **`glossary.md`** — Technical terms that are framework-specific jargon should
+  link to the relevant docs page for that framework/library.
 
-Format inline links as standard markdown: `[Express docs](https://expressjs.com/en/api.html)`.
+Format inline links as standard markdown: `[<Technology>](<url>)`.
 Place them naturally in the text where a reader would want to dive deeper, not
-dumped in a list at the end of a paragraph.
+dumped in a list at the end of a paragraph. Use the short form
+(`[TechName](url)`) not the verbose form (`[TechName docs](url)`) when the
+technology name alone is sufficient context.
 
 #### URL Construction
 
