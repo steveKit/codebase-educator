@@ -44,7 +44,7 @@ specific language or framework. Include a small Mermaid diagram if it helps
 
 ## Seen In
 
-- [[<project-name>]] — <one-line description of how this project uses/demonstrates the concept>
+- [[<project-name>/_overview|<project-name>]] — <one-line description of how this project uses/demonstrates the concept>
 
 ## Further Reading
 
