@@ -5,6 +5,36 @@ Sections use Obsidian-compatible markdown with `[[wikilinks]]`.
 
 ---
 
+## Wikilinking Section Headers
+
+When a section header names a transferable concept — a design pattern, architectural
+style, testing practice, or named principle — wikilink it in the body text near
+the header. The header itself stays plain text (Obsidian doesn't render wikilinks
+in headers well), but the first sentence under it should include the `[[concept-name]]`.
+
+**Quick test:** If you could write a standalone concept page for it (with "How It
+Works", "Trade-Offs", etc.) without referencing this specific project, it deserves
+a wikilink.
+
+This applies especially to:
+- Pattern names in `design-patterns.md` headers (e.g., `### Repository Pattern`
+  → body includes `[[repository-pattern]]`)
+- Architectural styles in `architecture.md` (e.g., `### Event-Driven Architecture`
+  → body includes `[[event-driven-architecture]]`)
+- Entries under "Missing Patterns" — the general concept still gets a page even
+  when the project doesn't use it
+- Anti-patterns — name them with a wikilink so the concept page can explain why
+  they're harmful
+
+The "Concepts to Link" lists below each section template are starting points,
+not exhaustive. Any transferable idea that passes the test above should be linked,
+even if it's not in the list.
+
+Phase 2.5 (Concept Sweep) will catch anything missed here, but proactive linking
+during writing is faster and produces better-placed links.
+
+---
+
 ## architecture.md
 
 **Goal:** Reader understands the system's shape — what the pieces are, how they

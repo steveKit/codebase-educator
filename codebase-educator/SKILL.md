@@ -490,6 +490,56 @@ it contains was already placed inline during section writing. To write it:
 Do not re-research URLs — the technology URL index from Phase 1 and the
 inline links from Phase 2 are the source of truth.
 
+### Phase 2.5: Concept Sweep
+
+After writing all sections but before processing concepts, actively scan for
+missed concept opportunities. Phase 2 writing relies on the author remembering
+to wikilink — this sweep catches what slipped through.
+
+**Process:**
+
+1. **Extract section headers** — Grep all written section files for `##` and
+   `###` headers.
+2. **Apply the transferability test** to each header that names a technique,
+   pattern, or architectural idea:
+
+   > **Would this concept page make sense with zero projects in its "Seen In"
+   > list?** Can you write a meaningful "How It Works" and "Trade-Offs" section
+   > without referencing any specific project?
+
+   - **Yes → it's a concept.** Add a `[[concept-name]]` wikilink in the section
+     body near the header if one isn't already there.
+   - **No → it's a project detail.** Leave it as a plain header. Examples:
+     "Input Layer — VirtualScroll", "The _namespaces Pattern", module names,
+     file-specific structures.
+
+3. **Priority targets** — these header types almost always pass the test:
+   - Named design patterns in `design-patterns.md` (e.g., "### Repository Pattern")
+   - Architectural styles in `architecture.md` (e.g., "### Event-Driven Architecture")
+   - Named practices in `testing-strategy.md` (e.g., "### Snapshot Testing")
+   - Named anti-patterns in `gaps-vulnerabilities.md`
+   - Entries under "Missing Patterns" — the absence is itself a teaching moment
+     about when the pattern applies
+
+4. **Boundary cases** — use judgment:
+   - A pattern header qualified with a project-specific name
+     ("### Priority Queue for Scroll Events") → wikilink the general concept
+     (`[[priority-queue]]`) but keep the specific header text
+   - A technique that's well-known but very niche (e.g., "ones-complement
+     arithmetic") → still a concept if it's transferable knowledge, even if
+     only one project will ever reference it
+   - A compound header covering multiple ideas ("### Factory + Strategy for
+     Plugin Loading") → wikilink each concept separately
+
+5. **Add missing wikilinks** — For each concept identified in steps 2-4 that
+   isn't already wikilinked, add the wikilink inline in the relevant paragraph
+   (not just as the header). This ensures Phase 3 collects it.
+
+This sweep typically adds 2-5 concepts per brief. If it's adding 15+, the
+threshold is too low — tighten the transferability test. If it adds zero,
+double-check that pattern headers in `design-patterns.md` and `architecture.md`
+are all wikilinked.
+
 ### Phase 3: Concepts & Index
 
 This phase uses `_concepts/_registry.yaml` — a machine-readable index mapping
@@ -522,7 +572,8 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
 1. **Load registry** — Read `_concepts/_registry.yaml` into memory.
 
 2. **Collect concept list** — Gather every `[[concept-name]]` wikilink used
-   across all sections written in Phase 2. Deduplicate.
+   across all sections written in Phase 2 (including any added during the
+   Phase 2.5 sweep). Deduplicate.
 
 3. **Concept pages** — For each concept in the list:
    - **Check the registry** (not the filesystem) to see if the concept exists.
