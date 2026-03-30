@@ -111,12 +111,80 @@ In any Claude Code session:
 
 ## How It Works
 
-The skill runs in four phases:
+The skill uses a **state machine** with **disk registers** for restartability
+and context efficiency. If a run crashes mid-way, re-invoke the skill and it
+picks up where it left off.
 
-1. **Gather** — Scans project structure, reads key files, maps dependencies, samples code from different areas
-2. **Assess Quality** — Evaluates six quality signals to determine how to frame the analysis
-3. **Analyze & Write** — Produces all 12 section documents with honest, quality-aware framing
-4. **Connect** — Creates/updates concept pages in `_concepts/`, updates the vault index, reports cross-project connections
+### Workflow
+
+```mermaid
+graph TD
+    A["Invoke /codebase-educator"] --> B{"Resume file\nexists?"}
+    B -- No --> C["Phase 1: Gather"]
+    B -- Yes --> R["Resume from\nlast state"]
+    R --> C
+    R --> D
+    R --> E
+    R --> F
+    R --> G
+    R --> H
+    R --> I
+
+    C --> |"Scan structure, sample files,\nmap deps, build URL index"| C1["Write gather.yaml\n+ url-index.yaml"]
+    C1 --> D["Phase 1.5: Assess Quality"]
+    D --> |"6 quality signals → rating\n(exemplary/solid/mixed/cautionary)"| D1["Write quality.yaml"]
+    D1 --> E["Phase 2: Write Sections"]
+
+    E --> E1["architecture.md\n(always first)"]
+    E1 --> E2["Track A\n(implementation-heavy)"]
+    E1 --> E3["Track B\n(analytical)"]
+    E2 --> |"design-patterns\nkey-decisions\ntesting-strategy\ngaps-vulnerabilities"| E4["resources.md\n+ overview.md\n(always last)"]
+    E3 --> |"technology-choices\ndependencies\nevolution\nif-starting-over\nlearning-path\nglossary"| E4
+    E4 --> F["Phase 2.5: Concept Sweep"]
+
+    F --> |"Scan headers for missed\nconcept wikilinks"| G["Phase 3: Concepts & Index"]
+    G --> |"Create/update concept pages\nupdate registry + _index.md\nadd cross-project connections"| H["Phase 4: Commit & Push"]
+    H --> |"Branch, commit, PR,\nsquash merge"| I["Phase 5: Report"]
+    I --> J["Done ✓"]
+
+    style A fill:#4a9eff,color:#fff
+    style J fill:#2ea043,color:#fff
+    style C fill:#f0883e,color:#fff
+    style D fill:#f0883e,color:#fff
+    style E fill:#f0883e,color:#fff
+    style F fill:#f0883e,color:#fff
+    style G fill:#f0883e,color:#fff
+    style H fill:#8b949e,color:#fff
+    style I fill:#8b949e,color:#fff
+```
+
+### State Machine
+
+Each phase transitions through a linear state machine. The state file in
+`/tmp/educator-<name>/state.yaml` records progress so any interrupted run
+can resume without re-doing completed work.
+
+```
+INIT → GATHERING → GATHERED → ASSESSED → WRITING → SECTIONS_DONE
+→ SWEPT → CONCEPTS_DONE → COMMITTED → COMPLETE
+```
+
+### Registers
+
+Instead of carrying raw source code through every phase, the skill writes
+structured data to disk registers that downstream phases read on demand:
+
+| Register | Written by | Purpose |
+|----------|-----------|---------|
+| `state.yaml` | Orchestrator | Workflow progress + resume point |
+| `gather.yaml` | Phase 1 | Structured codebase data (replaces raw file content) |
+| `url-index.yaml` | Phase 1 | Technology link lookup table |
+| `quality.yaml` | Phase 1.5 | Quality rating + per-section tone guidance |
+| `sections.yaml` | Phase 2 | Per-section metadata (concepts, URLs, word counts) |
+
+This register architecture means each section writer loads only what it needs —
+its own template + the three data registers + 2-5 targeted file reads — rather
+than the entire gathered context.
 
 ## Philosophy
 
