@@ -1,7 +1,7 @@
 ---
 name: codebase-educator
 description: Analyze a codebase and produce an educational brief covering architecture, technology choices, design patterns, and gaps. Use when the user asks to "educate me on this codebase", "analyze this project for learning", "explain the architecture", "what can I learn from this code", or "codebase educator".
-argument-hint: "[source...] — one or more: local path, GitHub URL, website URL, npm:package, pypi:package, or omit for current project"
+argument-hint: "[source...] -- one or more: local path, GitHub URL, website URL, npm:package, pypi:package, or omit for current project"
 disable-model-invocation: true
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 ---
@@ -11,800 +11,450 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, Agent]
 Analyze a source and produce a structured educational brief as an Obsidian-compatible
 vault. The vault lives on the Windows filesystem at `/mnt/c/Users/horse/Obsidian/educator-briefs/`
 and is symlinked to `~/.claude/educator-briefs/`. Always use the symlink path for
-file operations — the safety hook allowlists the resolved path.
+file operations -- the safety hook allowlists the resolved path.
 
 **Arguments**: $ARGUMENTS
+
+---
+
+## Architecture: State Machine + Registers
+
+This skill uses a **state machine** for restartability and **disk registers** for
+context efficiency. Registers are YAML files in `/tmp/educator-<name>/` that
+replace implicit context-window memory with explicit, shareable data structures.
+
+### State Machine
+
+```
+INIT -> GATHERING -> GATHERED -> ASSESSED -> WRITING -> SECTIONS_DONE
+-> SWEPT -> CONCEPTS_DONE -> COMMITTED -> COMPLETE
+```
+
+Transition rules and the full schema are in `references/registers/state.md`.
+Write the state file after every transition. On resume, read the state file
+and skip completed phases.
+
+### Registers
+
+| Register | Written by | Purpose | Schema |
+|---|---|---|---|
+| `state.yaml` | Orchestrator | Workflow progress + restartability | `references/registers/state.md` |
+| `gather.yaml` | Phase 1 | Structured codebase data | `references/registers/gather.md` |
+| `url-index.yaml` | Phase 1 | Technology link lookup table | `references/registers/url-index.md` |
+| `quality.yaml` | Phase 1.5 | Quality assessment + tone guidance | `references/registers/quality.md` |
+| `sections.yaml` | Phase 2 | Per-section metadata (concepts, URLs, counts) | `references/registers/sections-manifest.md` |
+
+All registers live in `/tmp/educator-<name>/`. Read register schemas on first
+use, not upfront -- only load the schema you need for the current phase.
+
+### Context Loading Rules
+
+**Load only what the current phase needs:**
+
+| Phase | Load these references | Load these registers |
+|---|---|---|
+| 1 (Gather) | nothing extra | -- (creating them) |
+| 1.5 (Quality) | `quality-assessment.md` | `gather.yaml` |
+| 2 (Write) | `sections/_shared.md` + the ONE section template | `gather.yaml`, `url-index.yaml`, `quality.yaml` |
+| 2.5 (Sweep) | nothing extra | `sections.yaml` |
+| 3 (Concepts) | `concept-template.md` | `sections.yaml`, registry on disk |
+| 4-5 (Commit/Report) | nothing extra | `state.yaml`, `sections.yaml` |
+
+**Never load all 13 section templates at once.** Each section writer loads
+`references/sections/_shared.md` (shared rules) + its own template file only.
+
+---
 
 ## Source Detection
 
 `$ARGUMENTS` may contain **one or more sources**, space-separated. Parse each
-token individually using the table below. If no argument is provided, the
-single source is the current working directory.
+token using:
 
 | Input | Type | Method |
 |---|---|---|
 | No argument | Local project | Analyze current working directory |
 | `/path`, `./path`, `~/path` | Local path | Analyze directory at that path |
-| `https://github.com/...` | GitHub repo | Clone to `/tmp/educator-<name>`, analyze, clean up |
-| `https://...` (non-GitHub) | Website | Try to discover source repo first (see below), fall back to external observation |
-| `npm:<package>` | npm package | `npm pack <package>` to `/tmp/educator-<name>`, extract, analyze, clean up |
-| `pypi:<package>` | PyPI package | `pip download --no-deps --no-binary :all:` to `/tmp/educator-<name>`, extract, analyze, clean up |
-
-For GitHub repos: `git clone --depth 1 <url> /tmp/educator-<name>` (shallow clone is sufficient).
-
-After analysis, always clean up any temp directories.
+| `https://github.com/...` | GitHub repo | `git clone --depth 1` to `/tmp/educator-<name>` |
+| `https://...` (non-GitHub) | Website | Discover repo first (see Website Sources below), fall back to external observation |
+| `npm:<package>` | npm package | `npm pack` to `/tmp/educator-<name>`, extract |
+| `pypi:<package>` | PyPI package | `pip download --no-deps --no-binary :all:` to `/tmp/educator-<name>`, extract |
 
 ### Source URL Resolution
 
-Many features (code example links, relevant file lists) need a base URL to link
-back to source files. Resolve this once during source detection and reuse it:
+Resolve the base URL once during source detection:
 
 | Source type | Base URL | File link pattern |
 |---|---|---|
-| GitHub repo | The input URL (e.g., `https://github.com/expressjs/express`) | `<base>/blob/main/<filepath>` (verify default branch with `git rev-parse --abbrev-ref HEAD`) |
-| Local project with GitHub remote | Run `git remote get-url origin` and convert `git@github.com:owner/repo.git` → `https://github.com/owner/repo` | Same blob pattern |
-| npm/PyPI with `repository` field | Read from package.json `repository.url` or pyproject.toml `[project.urls]` | Same blob pattern if GitHub |
-| Local project, no remote | None — use relative file paths only | `<filepath>` (no link) |
-| Website | N/A | N/A |
-
-Store the resolved base URL (or `null`) for use in Phases 2-3. When no URL is
-available, code examples and relevant file lists still reference paths — they
-just aren't clickable links.
-
-## Vault Structure
-
-All output goes to `~/.claude/educator-briefs/`. This is an Obsidian vault.
-
-On **first ever run**, create:
-- `~/.claude/educator-briefs/_index.md` — Map of Content (MOC), using this template:
-
-  ```markdown
-  # Educator Briefs — Map of Content
-
-  A growing vault of educational analyses. Open any project overview to start
-  exploring.
-
-  ## How to Use This Vault
-
-  1. Pick a project from the table below and open its overview
-  2. Follow `[[wikilinks]]` to concept pages for cross-project learning
-  3. Use Obsidian's Graph View to see how concepts connect across projects
-  4. Concepts grow richer with each new analysis — revisit them over time
-
-  ## Projects
-
-  | Project | Source Type | Date | Summary |
-  |---|---|---|---|
-
-  ## Concepts by Category
-
-  *Maintained by the codebase-educator skill as analyses are added.*
-
-  ### Architecture
-  ### Patterns
-  ### Philosophy
-  ### Practice
-  ### Principles
-  ```
-
-- `~/.claude/educator-briefs/_concepts/` — shared concept directory
-- `~/.claude/educator-briefs/_concepts/_registry.yaml` — concept-to-project index (see Phase 3)
-
-Each analysis creates a **project subfolder** named after the source:
-- Local path → directory name (e.g., `my-app`)
-- GitHub → `owner--repo` (e.g., `expressjs--express`)
-- Website → domain name (e.g., `stripe.com`)
-- Package → package name (e.g., `fastify`)
-
-If the subfolder already exists, **ask the user** whether to overwrite or create
-a timestamped version (e.g., `my-app-2026-03`).
-
-### Project Subfolder Layout
-
-```
-<project-name>/
-├── _<project-name>_overview.md  # Executive summary + wikilinks to all sections
-├── architecture.md          # System structure, layers, data flow
-├── technology-choices.md    # Stack decisions with rationale and trade-offs
-├── design-patterns.md       # Patterns in use, quality of application
-├── key-decisions.md         # Non-obvious choices that shaped the codebase
-├── gaps-vulnerabilities.md  # Architectural weak points, missing patterns
-├── dependencies.md          # Dependency philosophy and risk assessment
-├── evolution.md             # How the codebase has evolved over time
-├── testing-strategy.md      # What's tested, how, and what's missing
-├── if-starting-over.md      # Lessons learned, what to do differently
-├── learning-path.md         # Ordered reading list of files/modules
-├── glossary.md              # Domain and technical terms defined in context
-└── resources.md             # Consolidated links to official docs, repos, and guides
-```
-
-## Process
+| GitHub repo | Input URL | `<base>/blob/<branch>/<filepath>` |
+| Local with GitHub remote | `git remote get-url origin` converted | Same blob pattern |
+| npm/PyPI with `repository` | From package manifest | Same if GitHub |
+| Local, no remote | `null` | Relative paths only |
 
 ### Multi-Source Batching
 
-When multiple sources are provided, run phases per-source then shared:
+When multiple sources are provided:
 
-| Phase | Scope | What happens |
-|---|---|---|
-| Phase 1 (Gather) | **Per source** | Resolve, scan, build URL index for each source sequentially |
-| Phase 1.5 (Quality) | **Per source** | Assess quality for each source |
-| Phase 2 (Write) | **Per source** | Write all section files for each source |
-| Phase 3 (Concepts) | **Once, across all sources** | Load registry once, process concepts from all sources in one pass, find cross-project connections (including between batch sources) |
-| Phase 4 (Commit) | **Once** | Single branch, single commit containing all sources |
-| Phase 5 (Report) | **Once** | Combined report covering all sources |
-| Phase 6 (Audit) | **Per source** | Dispatch educator-audit for each source via Agent tool |
+| Phase | Scope |
+|---|---|
+| 1, 1.5, 2, 2.5 | **Per source** sequentially |
+| 3 (Concepts) | **Once** across all sources |
+| 4 (Commit) | **Once** -- single branch, single commit |
+| 5 (Report) | **Once** -- combined report |
 
-**Shared URL index:** If multiple sources use the same technology (e.g., two
-Node.js projects both use Express), the URL is resolved once and reused. Build
-each source's URL index incrementally, checking the running index before
+Clean up each source's `/tmp/` directory after its Phase 2 completes.
+Build a shared URL index across sources -- check existing entries before
 making new lookups.
 
-**Temp directory cleanup:** Clean up each source's `/tmp/educator-<name>`
-after its Phase 2 completes — don't hold all clones in `/tmp/` simultaneously.
+---
 
-For a single source, this collapses to the normal sequential flow with no
-overhead.
+## Phase 1: Gather
 
-### Phase 1: Gather
+**State transition:** `INIT -> GATHERING -> GATHERED`
 
-1. **Resolve source** — detect type, acquire code if needed
-2. **Scan structure** — `ls` top-level, read key files:
+1. **Resolve source** -- detect type, acquire code if needed
+2. **Scan structure** -- `ls` top-level, read key files:
    - Entry points (main, index, app, server files)
    - Config files (package.json, Cargo.toml, go.mod, pyproject.toml, etc.)
    - README, CLAUDE.md, ARCHITECTURE.md, docs/ if they exist
    - CI/CD config (.github/workflows, Dockerfile, docker-compose)
    - Test directories and config
-3. **Map the dependency graph** — read import/require statements in key files,
-   trace the module structure, identify layers and boundaries
-4. **Sample depth** — read files from different areas of the codebase to
-   understand coding style, error handling, and patterns in practice.
-   Scale sampling with project size:
+3. **Map dependency graph** -- read imports in key files, trace module structure
+4. **Sample depth** -- read files from different codebase areas:
 
    | Project size | Sample target | Strategy |
    |---|---|---|
-   | Small (<20 source files) | Read most files | Near-complete coverage is feasible |
-   | Medium (20-100 files) | 8-15 files | Cover every layer/module, not just entry points |
-   | Large (100+ files) | 15-25 files | Use Glob to discover, then sample each subsystem |
+   | Small (<20 files) | Read most files | Near-complete coverage |
+   | Medium (20-100) | 8-15 files | Cover every layer/module |
+   | Large (100+) | 15-25 files | Glob to discover, sample each subsystem |
 
-   Use Glob to discover files by pattern (e.g., `**/*.ts`, `**/routes/**`)
-   then batch Read calls rather than exploring one file at a time. Prioritize:
-   files with the most imports (hub modules), files at architectural boundaries,
-   and files that are unusual or unexpected for the stack.
-5. **Read test files** — read 2-3 actual test files (not just test config).
-   Choose tests for core business logic, not trivial utility tests. The
-   testing-strategy section depends on seeing real test code — mocking
-   approaches, assertion styles, what's tested vs. what's skipped.
-6. **Check history clues** (if git repo) — `git log --oneline -20` for recent
-   activity patterns; `git log --diff-filter=A --name-only --format="" | head -30`
-   for file creation order (reveals evolution)
-7. **Build technology URL index** — Before writing any sections, compile a lookup
-   table of every significant technology in the stack. For each one, resolve:
-   - **Official site / docs URL** — construct from known patterns (see below)
-   - **Registry URL** — construct from the predictable patterns in "URL Construction"
-   - **Repository URL** — GitHub/GitLab link (often in package.json `repository`,
-     pyproject.toml `[project.urls]`, Cargo.toml `[package]`, or go.mod module path)
+   Batch Read calls. Prioritize: hub modules, architectural boundaries,
+   unusual files. For each file, write a **structured summary** (not raw
+   content) into the gather register, noting key snippets by line range.
 
-   **URL verification budget:** Most major technologies have stable, well-known
-   URLs that don't need runtime verification. Only use WebFetch to verify a URL
-   when the official docs site is not obvious from the technology name or registry
-   metadata (e.g., a lesser-known library with no `homepage` field in its package
-   manifest). For well-known technologies (major languages, popular frameworks,
-   databases), construct the URL directly — don't spend a WebFetch call confirming
-   that `https://www.typescriptlang.org/` still exists. When in doubt, link to
-   the registry page — it's always valid and always has a link to the real docs.
+5. **Read test files** -- 2-3 real test files for core logic (not trivial utils)
+6. **Check history** (if git) -- `git log --oneline -20` for activity;
+   `git log --diff-filter=A --name-only --format="" | head -30` for file creation order
+7. **Build URL index** -- For every significant technology, resolve:
+   - Official docs URL (construct from known patterns for well-known tech)
+   - Registry URL (npm/PyPI/crates.io/pkg.go.dev patterns)
+   - Repo URL (from package manifest or known GitHub paths)
 
-   This index is the **single source of truth** for links throughout all sections.
-   Every section that mentions a technology pulls from this index rather than
-   constructing URLs ad hoc. Build it now so writing is fast and consistent.
+   **WebFetch budget:** Only verify URLs when docs site isn't obvious from
+   the name or registry metadata. Never WebFetch well-known tech URLs.
+   When uncertain, link to registry page.
 
-   **Minimum coverage:** language runtime, framework, database/datastore, major
-   libraries (anything imported in 3+ files), build tools, test framework. Skip
-   trivial utilities used in one place.
+   **Minimum coverage:** language, framework, database, major libraries
+   (3+ imports), build tools, test framework.
 
-### Phase 1.5: Quality Assessment
+8. **Write registers:**
+   - Write `gather.yaml` following `references/registers/gather.md` schema
+   - Write `url-index.yaml` following `references/registers/url-index.md` schema
+   - Update `state.yaml`: state -> `GATHERED`
 
-Before writing any sections, run the quality assessment from
-`references/quality-assessment.md`:
+---
 
-1. Evaluate all 6 quality signals (engineering maturity, maintenance health,
+## Phase 1.5: Quality Assessment
+
+**State transition:** `GATHERED -> ASSESSED`
+
+Load `references/quality-assessment.md` for the full rubric.
+
+1. Read `gather.yaml` for codebase observations
+2. Evaluate all 6 quality signals (engineering maturity, maintenance health,
    testing discipline, documentation intent, security awareness, dependency hygiene)
-2. Assign an overall rating: **exemplary**, **solid**, **mixed**, or **cautionary**
-3. This rating determines the framing tone for every section — see the reference
-   doc for tone guidance and observation markers
-4. For **mixed** and **cautionary** sources, every pattern observation must be
-   explicitly tagged: *worth emulating*, *acceptable trade-off*, *cautionary
-   example*, or *anti-pattern* — with the correct alternative explained
-5. For concept page backlinks, include the quality context so readers never
-   mistake a bad implementation for a good reference
+3. Assign overall rating: **exemplary**, **solid**, **mixed**, or **cautionary**
+4. Pre-compute per-section quality notes
+5. Write `quality.yaml` following `references/registers/quality.md` schema
+6. Update `state.yaml`: state -> `ASSESSED`
 
-The goal is not gatekeeping — bad code is highly educational. The goal is
-**honest framing** so the reader always knows whether they're looking at
-something to emulate or something to learn from by contrast.
+---
 
-### Phase 2: Analyze & Write
+## Phase 2: Write Sections
 
-Write each section file using the templates in `references/section-guide.md`.
+**State transition:** `ASSESSED -> WRITING -> SECTIONS_DONE`
 
-**Critical rules for writing sections:**
-- Every section starts with a YAML-like properties block for Obsidian:
-  ```
-  ---
-  source: <project-name>
-  section: <section-name>
-  difficulty: beginner | intermediate | advanced
-  quality-note: <how the source quality rating affects this section>
-  ---
-  ```
-- Every section ends with a **"Why This Matters"** callout explaining the
-  general principle — what the reader learns that transfers to other projects
-- Use `[[concept-name]]` wikilinks for every architectural concept, design
-  pattern, or philosophy mentioned — these link to `_concepts/` pages
-- Use `[[<project-name>/section-name]]` for cross-references within the project
-- **Use Mermaid diagrams** (` ```mermaid `) for architecture visualization —
-  Obsidian renders them natively as SVG, so they reflow on any screen size
-  (desktop, tablet, mobile). See `references/diagram-guide.md` for syntax
-  patterns and style rules. Never use ASCII box-drawing characters for
-  structural diagrams — they break on narrow viewports and mobile
-- Be honest about uncertainty: "This appears to be..." rather than asserting
-  intent you can't verify from code alone
-- **Embed resource links inline** — see "Resource Linking" below
-- **Relevant files header** — After the YAML properties block, list the key
-  source files for this section (see "Relevant Files" below). Omit for sections
-  that don't map to specific files (`_<project-name>_overview.md`, `if-starting-over.md`,
-  `resources.md`).
-- **Code examples with source attribution** — Include short, illustrative code
-  snippets (see "Code Examples" below). Every snippet links back to its source.
+### Vault Bootstrap (first-ever run only)
 
-**Minimum depth expectations:**
+If `~/.claude/educator-briefs/_index.md` doesn't exist, create the vault
+structure. See `references/vault-bootstrap.md` for templates:
+- `_index.md` (Map of Content)
+- `_concepts/` directory
+- `_concepts/_registry.yaml` (empty with header comments)
 
-Every section must be substantive enough to teach something the reader couldn't
-learn from a 30-second glance at the repo. Use these floors:
+If the project subfolder already exists, ask the user whether to overwrite
+or create a timestamped version.
 
-| Section category | Min depth | Code examples |
-|---|---|---|
-| **Implementation-heavy** (architecture, design-patterns, key-decisions, testing-strategy, gaps-vulnerabilities) | 300+ words of analysis, multiple subsections | 3-5 code snippets grounding observations in real source |
-| **Analytical** (technology-choices, dependencies, evolution, if-starting-over) | 200+ words, structured analysis with evidence | 1-3 code snippets where they illustrate a point |
-| **Reference** (learning-path, glossary, resources, overview) | Complete coverage of all items | N/A — these are indexes, not analysis |
+### Section Writing Protocol
 
-If a section would be thin (e.g., no test files exist for testing-strategy),
-**say so explicitly and explain what the absence reveals** rather than writing a
-stub. A missing testing strategy is itself a substantive finding.
+For each section, the writer:
 
-**Inline link checklist (run after writing all sections):**
+1. Loads `references/sections/_shared.md` (shared rules)
+2. Loads `references/sections/<section>.md` (that section's template only)
+3. Reads registers: `gather.yaml`, `url-index.yaml`, `quality.yaml`
+4. Does **targeted reads** of 2-5 specific files/line ranges from the
+   source for code examples (guided by `sampled-files` in gather register)
+5. Writes the section file to `~/.claude/educator-briefs/<project-name>/`
+6. Appends its entry to `sections.yaml` (concepts linked, URLs used, counts)
+7. Updates `state.yaml` section status: `done`
 
-For each section file, verify:
-1. Every technology/framework/library/tool is hyperlinked on first mention
-2. Links use the technology URL index from Phase 1 (no ad hoc URL construction)
-3. `technology-choices.md` Stack Summary table has clickable links in every row
-4. `dependencies.md` has registry + docs links for every dependency discussed
-5. `glossary.md` has docs links for framework-specific jargon
-6. `gaps-vulnerabilities.md` links to guides for addressing each gap
+### Write Order and Parallelism
 
-Then verify `resources.md` contains every unique URL from all sections.
-
-Write sections in this order (each builds on the previous):
+**Track A** (implementation-heavy -- these need more source file reads):
 1. `architecture.md`
-2. `technology-choices.md`
-3. `design-patterns.md`
-4. `key-decisions.md`
-5. `dependencies.md`
-6. `evolution.md`
-7. `testing-strategy.md`
-8. `gaps-vulnerabilities.md`
-9. `if-starting-over.md`
-10. `learning-path.md`
-11. `glossary.md`
-12. `resources.md` (consolidated link reference)
-13. `_<project-name>_overview.md` (last — it summarizes everything above)
+2. `design-patterns.md`
+3. `key-decisions.md`
+4. `testing-strategy.md`
+5. `gaps-vulnerabilities.md`
 
-### Resource Linking
+**Track B** (analytical -- these draw more from registers than raw source):
+1. `technology-choices.md` (can start after `architecture.md` completes)
+2. `dependencies.md`
+3. `evolution.md`
+4. `if-starting-over.md`
+5. `learning-path.md`
+6. `glossary.md`
 
-Every section should embed links to official documentation and dependency pages
-where they are contextually relevant. Additionally, a consolidated `resources.md`
-collects all links in one place.
+**Sequencing rule:** `architecture.md` is always written first (it
+establishes structural vocabulary). After that, both tracks can proceed.
+The following are always last, in order:
+- `resources.md` (collects from all other sections -- read `sections.yaml`)
+- `_<project-name>_overview.md` (summarizes everything)
 
-#### Inline Links (embedded in each section)
+**Parallel dispatch (when using Agent tool):**
 
-**Every mention of a technology, framework, library, or tool should be a
-hyperlink on first mention in each section.** Use the technology URL index
-built in Phase 1 — this is why you built it. Subsequent mentions in the same
-section can be plain text.
+If dispatching agents for Track A and Track B:
+- Each agent gets: its section templates + all three registers
+- No file overlap -- each agent writes different section files
+- Each agent appends to `sections.yaml` (append-only, no conflicts)
+- Instruct agents to use `Bash` with heredoc for new file writes
+  (background agents may get `Write` denied for vault paths)
+- The orchestrator writes `resources.md` and `overview.md` last
 
-Per-section linking requirements:
-
-- **`technology-choices.md`** — Stack Summary table must have clickable links
-  for every technology (see section-guide.md). Decision Analysis paragraphs
-  link to official docs on first mention of each technology.
-- **`architecture.md`** — Link frameworks and runtimes where they define the
-  architecture (e.g., link the framework when discussing its routing or
-  middleware pipeline).
-- **`design-patterns.md`** — Link to authoritative pattern references (e.g.,
-  refactoring.guru, language-specific pattern guides) for patterns discussed.
-  Link to framework docs when a pattern is framework-provided.
-- **`dependencies.md`** — Every dependency in the analysis gets its registry
-  link, repo link, and docs link (where they exist). This section should be
-  the most link-dense in the brief.
-- **`testing-strategy.md`** — Link to testing framework and assertion library docs.
-- **`gaps-vulnerabilities.md`** — Link to relevant guides for addressing gaps
-  (e.g., OWASP guides, caching strategy articles).
-- **`learning-path.md`** — Link to prerequisite reading for advanced topics.
-  Link to official "getting started" guides for technologies the reader needs
-  to learn.
-- **`glossary.md`** — Technical terms that are framework-specific jargon should
-  link to the relevant docs page for that framework/library.
-
-Format inline links as standard markdown: `[<Technology>](<url>)`.
-Place them naturally in the text where a reader would want to dive deeper, not
-dumped in a list at the end of a paragraph. Use the short form
-(`[TechName](url)`) not the verbose form (`[TechName docs](url)`) when the
-technology name alone is sufficient context.
-
-#### URL Construction
-
-For well-known registries, construct URLs directly — these follow predictable patterns:
-
-| Registry | Pattern | Example |
-|---|---|---|
-| npm | `https://www.npmjs.com/package/<name>` | `https://www.npmjs.com/package/express` |
-| PyPI | `https://pypi.org/project/<name>/` | `https://pypi.org/project/flask/` |
-| crates.io | `https://crates.io/crates/<name>` | `https://crates.io/crates/serde` |
-| pkg.go.dev | `https://pkg.go.dev/<module>` | `https://pkg.go.dev/net/http` |
-| GitHub | `https://github.com/<owner>/<repo>` | `https://github.com/expressjs/express` |
-
-For official documentation sites of well-known technologies, construct the URL
-directly without verification. For lesser-known libraries where the docs URL
-isn't obvious, check the `homepage` field in the package manifest or use one
-WebFetch call to verify. If a docs URL is uncertain, link to the registry page
-instead — a working link to the right package is better than a broken link to
-the docs.
-
-#### `resources.md` (consolidated)
-
-After writing all sections, produce `resources.md` with every external link
-collected and organized:
-
-```markdown
-# Resources
-
-## Core Stack
-| Technology | Docs | Repository | Registry |
-|---|---|---|---|
-| Express | [expressjs.com](https://expressjs.com) | [GitHub](https://github.com/expressjs/express) | [npm](https://www.npmjs.com/package/express) |
-
-## Dependencies
-| Package | Purpose | Docs | Registry |
-|---|---|---|---|
-| helmet | Security headers | [helmetjs.github.io](https://helmetjs.github.io) | [npm](https://www.npmjs.com/package/helmet) |
-
-## Pattern References
-| Pattern | Reference |
-|---|---|
-| Middleware | [Express middleware guide](https://expressjs.com/en/guide/using-middleware.html) |
-
-## Further Reading
-- [Topic] — [Link] — Why this is relevant to this codebase
-```
-
-Omit any column that would be empty for all rows in a table. Only include the
-"Further Reading" section when there are genuinely useful supplementary resources
-beyond docs and registries.
-
-### Relevant Files
-
-Each section (where applicable) starts with a **Relevant Files** block immediately
-after the YAML properties. This gives the reader direct access to the source files
-that informed the section.
-
-**Format when a source URL is available (GitHub, etc.):**
-
-```markdown
-> **Relevant files:**
-> [`<path>`](<base-url>/blob/<branch>/<path>) ·
-> [`<path>`](<base-url>/blob/<branch>/<path>) ·
-> [`<path>`](<base-url>/blob/<branch>/<path>)
-```
-
-**Format when no source URL is available (local project, no remote):**
-
-```markdown
-> **Relevant files:** `<path>` · `<path>` · `<path>`
-```
-
-Rules:
-- List 3-7 files — the most important ones for the section, not every file touched
-- Use the blockquote format so it renders as a distinct callout in Obsidian
-- Paths are relative to the project root
-- Omit this block for: `_<project-name>_overview.md`, `if-starting-over.md`, `resources.md`
-  (these don't map to specific source files)
-
-### Code Examples
-
-Include short code snippets to illustrate key points — patterns, decisions,
-techniques, anti-patterns. Code makes the analysis concrete and verifiable.
-
-**Format with source URL:**
-
-````markdown
-```<language>
-// <path>#L<start>-L<end>
-<code snippet>
-```
-<sub>[source](<base-url>/blob/<branch>/<path>#L<start>-L<end>)</sub>
-````
-
-**Format without source URL:**
-
-````markdown
-```<language>
-// <path>#L<start>-L<end>
-<code snippet>
-```
-<sub>source: `<path>` lines <start>-<end></sub>
-````
-
-Rules:
-- **Keep snippets short** — 5-15 lines. Trim to the essential part. Use `// ...`
-  to elide irrelevant lines.
-- **Always include the file path and line numbers** in a comment on the first line
-  of the code block AND in the `<sub>` attribution below it
-- **GitHub line links** use the `#L15-L28` fragment format for ranges
-- **Choose snippets that teach** — show the pattern, the decision, or the problem.
-  Don't include code just to prove you read it.
-- **Implementation-heavy sections** (architecture, design-patterns, key-decisions,
-  testing-strategy, gaps-vulnerabilities) need **3-5 code examples each**. These
-  sections make claims about how the code works — the snippets are the evidence.
-- **Analytical sections** (technology-choices, dependencies, evolution,
-  if-starting-over) should include **1-3 code examples** where they ground an
-  observation in real source (e.g., showing a config choice, a dependency usage
-  pattern, or an evolution artifact).
-- **Reference sections** (learning-path, glossary, resources, overview) don't
-  need code examples.
+If running single-threaded, write in this order:
+`architecture` -> `technology-choices` -> `design-patterns` ->
+`key-decisions` -> `dependencies` -> `evolution` -> `testing-strategy` ->
+`gaps-vulnerabilities` -> `if-starting-over` -> `learning-path` ->
+`glossary` -> `resources` -> `overview`
 
 ### Mermaid Validation
 
-After writing all sections, validate every Mermaid diagram. Broken diagrams
-render as raw syntax in Obsidian — the reader sees code instead of a chart.
+After writing all sections, validate every Mermaid diagram:
+- Direction declaration present (`graph TD`, `graph LR`, etc.)
+- Every `subgraph` has a matching `end`
+- No special characters in labels without wrapping (`A["Label (parens)"]`)
+- No duplicate node IDs within a diagram
+See `references/diagram-guide.md` for syntax patterns.
 
-Common errors to check:
-- **Missing node IDs** — `A --> B` requires both A and B to be defined
-- **Unclosed subgraphs** — every `subgraph` needs an `end`
-- **Special characters in labels** — parentheses, brackets, and quotes in node
-  labels must be wrapped: `A["Label with (parens)"]`
-- **Duplicate node IDs** — each ID must be unique within a diagram
-- **Direction declaration** — `graph TD`, `graph LR`, etc. must be the first line
+### Inline Link Checklist
 
-For each diagram, mentally trace the syntax: declaration → nodes → edges →
-subgraphs closed → styles applied. Fix any errors in place before moving to
-Phase 3.
+After all sections are written, verify:
+1. Every technology hyperlinked on first mention per section
+2. `technology-choices.md` stack table has clickable links in every row
+3. `dependencies.md` has registry + docs links for every dependency
+4. `glossary.md` has docs links for framework-specific jargon
+5. `gaps-vulnerabilities.md` links to guides for addressing each gap
+6. `resources.md` contains every unique URL from all sections
 
-### `resources.md` as Collection
+Update `state.yaml`: state -> `SECTIONS_DONE`
 
-`resources.md` is a **collection task, not a reconstruction task**. Every link
-it contains was already placed inline during section writing. To write it:
+---
 
-1. Grep the written section files for markdown links (`[text](url)`)
-2. Deduplicate and categorize into the resources.md structure
-3. Fill any gaps (a dependency mentioned in `dependencies.md` prose but
-   never linked inline should get its registry/docs links here)
+## Phase 2.5: Concept Sweep
 
-Do not re-research URLs — the technology URL index from Phase 1 and the
-inline links from Phase 2 are the source of truth.
+**State transition:** `SECTIONS_DONE -> SWEPT`
 
-### Phase 2.5: Concept Sweep
+Scan for missed concept wikilink opportunities.
 
-After writing all sections but before processing concepts, actively scan for
-missed concept opportunities. Phase 2 writing relies on the author remembering
-to wikilink — this sweep catches what slipped through.
+1. Read `sections.yaml` to see what's already linked
+2. Grep section files for `##` and `###` headers
+3. Apply the **transferability test** to each header naming a technique/pattern:
 
-**Process:**
+   > Would this concept page make sense with zero projects in "Seen In"?
+   > Can you write "How It Works" and "Trade-Offs" without referencing any project?
 
-1. **Extract section headers** — Grep all written section files for `##` and
-   `###` headers.
-2. **Apply the transferability test** to each header that names a technique,
-   pattern, or architectural idea:
+   Yes -> it's a concept, add `[[concept-name]]` wikilink near the header.
+   No -> it's a project detail, leave it.
 
-   > **Would this concept page make sense with zero projects in its "Seen In"
-   > list?** Can you write a meaningful "How It Works" and "Trade-Offs" section
-   > without referencing any specific project?
+4. Priority targets: named patterns in design-patterns.md, architectural styles
+   in architecture.md, named practices in testing-strategy.md, anti-patterns,
+   missing patterns
+5. Add missing wikilinks inline. Update `sections.yaml` with new concepts.
+6. Typical yield: 2-5 new concepts. If 15+, threshold is too low.
+7. Update `state.yaml`: state -> `SWEPT`, concept-sweep-done -> true
 
-   - **Yes → it's a concept.** Add a `[[concept-name]]` wikilink in the section
-     body near the header if one isn't already there.
-   - **No → it's a project detail.** Leave it as a plain header. Examples:
-     "Input Layer — VirtualScroll", "The _namespaces Pattern", module names,
-     file-specific structures.
+---
 
-3. **Priority targets** — these header types almost always pass the test:
-   - Named design patterns in `design-patterns.md` (e.g., "### Repository Pattern")
-   - Architectural styles in `architecture.md` (e.g., "### Event-Driven Architecture")
-   - Named practices in `testing-strategy.md` (e.g., "### Snapshot Testing")
-   - Named anti-patterns in `gaps-vulnerabilities.md`
-   - Entries under "Missing Patterns" — the absence is itself a teaching moment
-     about when the pattern applies
+## Phase 3: Concepts & Index
 
-4. **Boundary cases** — use judgment:
-   - A pattern header qualified with a project-specific name
-     ("### Priority Queue for Scroll Events") → wikilink the general concept
-     (`[[priority-queue]]`) but keep the specific header text
-   - A technique that's well-known but very niche (e.g., "ones-complement
-     arithmetic") → still a concept if it's transferable knowledge, even if
-     only one project will ever reference it
-   - A compound header covering multiple ideas ("### Factory + Strategy for
-     Plugin Loading") → wikilink each concept separately
+**State transition:** `SWEPT -> CONCEPTS_DONE`
 
-5. **Add missing wikilinks** — For each concept identified in steps 2-4 that
-   isn't already wikilinked, add the wikilink inline in the relevant paragraph
-   (not just as the header). This ensures Phase 3 collects it.
+Load `references/concept-template.md` for the concept page template.
 
-This sweep typically adds 2-5 concepts per brief. If it's adding 15+, the
-threshold is too low — tighten the transferability test. If it adds zero,
-double-check that pattern headers in `design-patterns.md` and `architecture.md`
-are all wikilinked.
+### Registry
 
-### Phase 3: Concepts & Index
+Uses `_concepts/_registry.yaml` -- a YAML index mapping concept names to
+projects. If the registry doesn't exist (older vault), build it once by
+scanning `_concepts/*.md` for "## Seen In" entries.
 
-This phase uses `_concepts/_registry.yaml` — a machine-readable index mapping
-concept names to the projects that reference them. This avoids scanning every
-concept file as the vault grows.
+### Steps
 
-**Registry format:**
+1. **Load registry** into memory
+2. **Collect concept list** from `sections.yaml` -- union of all
+   `concepts-linked` across sections. Deduplicate.
+3. **Process concepts** -- for each:
+   - **Normalize to kebab-case:** lowercase, hyphens only. This is the
+     filename AND registry key AND wikilink target.
+   - Check registry (not filesystem) for existence
+   - **New concept:** Create page from `references/concept-template.md`,
+     add to registry with this project as first entry
+   - **Existing concept:** Append backlink under "## Seen In", add project
+     to registry list
 
-```yaml
-# _concepts/_registry.yaml
-# Auto-maintained by codebase-educator. Do not edit manually.
-middleware:
-  - expressjs--express
-  - fastify--fastify
-dependency-injection:
-  - expressjs--express
-  - spring-petclinic--spring-petclinic
-testing-pyramid:
-  - fastify--fastify
-```
+   **Backlink format:** `[[<project>/_<project>_overview|<project>]]`
+   (bare `[[project]]` resolves to nothing -- it's a folder).
 
-Each key is a concept name (matching the filename without `.md`). Each value
-is a list of project subfolder names that reference the concept.
+   **Batch writes:** Group new concepts and write in quick succession.
+   Batch Edit calls for existing concept backlinks.
 
-**Bootstrap:** If `_registry.yaml` doesn't exist (older vault), build it once
-by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
-
-**Steps:**
-
-1. **Load registry** — Read `_concepts/_registry.yaml` into memory.
-
-2. **Collect concept list** — Gather every `[[concept-name]]` wikilink used
-   across all sections written in Phase 2 (including any added during the
-   Phase 2.5 sweep). Deduplicate.
-
-3. **Concept pages** — For each concept in the list:
-   - **Normalize the name to kebab-case first:** lowercase, hyphens only,
-     no underscores or spaces. `Dependency Injection` → `dependency-injection`.
-     `cooperative_multitasking` → `cooperative-multitasking`. The normalized
-     name is the filename AND the registry key AND the wikilink target.
-   - **Check the registry** (not the filesystem) to see if the concept exists.
-   - If the concept is **not** in the registry → create the page using
-     `references/concept-template.md`, then add the concept to the registry
-     with this project as its first entry.
-   - If the concept **is** in the registry → append a backlink entry under
-     "## Seen In" in the existing concept page, then add this project to the
-     concept's registry list.
-
-   **Backlink format:** In concept page "Seen In" entries, always link to the
-   project's `_<project-name>_overview.md` using the alias syntax:
-   `[[<project-name>/_<project-name>_overview|<project-name>]]`. A bare `[[<project-name>]]`
-   resolves to nothing in Obsidian since the project is a folder, not a file.
-
-   **Batch for efficiency:** Group new concepts and write them in quick
-   succession rather than interleaving reads/writes. For existing concepts
-   that need a backlink appended, batch the Edit calls.
-
-4. **Cross-project connections (bidirectional)** — Use the registry to find
-   connections. No file scanning needed:
-   - Filter registry entries where the value list contains **both** the new
-     project and one or more other projects. These are the shared concepts.
-   - For each shared concept, read the concept page's "## Seen In" section
-     to get the usage descriptions for comparison (these are short — one line
-     per project).
-   - Write the "## Cross-Project Connections" block in the **new** project's
-     `_<project-name>_overview.md` (already drafted in Phase 2 — update it now with real data)
-   - **Also update each connected existing project's `_<project-name>_overview.md`**: append or
-     update its "## Cross-Project Connections" section to include a reciprocal
-     entry linking back to the new project. If the section doesn't exist yet
-     (older briefs created before this rule), create it at the end of the file
-     before any trailing `---`
-   - Format for each connection block:
+4. **Cross-project connections** -- Use registry to find shared concepts:
+   - Filter entries where the list contains both new project + others
+   - Read "## Seen In" in shared concept pages for usage descriptions
+   - Write "## Cross-Project Connections" in new project's overview
+   - **Update each connected project's overview** with reciprocal entry
+   - Format:
      ```
-     Concepts shared with [[<other-project>/_<other-project>_overview|<Display Name>]]:
-     - **<Concept>** — <how this project uses it>; <how the other project uses it>.
-       <What the contrast teaches.>
+     Concepts shared with [[other/_other_overview|Display Name]]:
+     - **Concept** -- how this project uses it; how the other uses it.
      ```
-   - Stage the modified existing `_<project-name>_overview.md` files alongside the new project
-     files in the commit (Phase 4 step 3)
 
-5. **Write registry** — Save the updated `_concepts/_registry.yaml` back to disk.
-   Stage it in the Phase 4 commit.
+5. **Write registry** back to disk
+6. **Update `_index.md`** -- add project row, update Concepts by Category
+7. **Quick link checks:**
+   - All wikilinks are lowercase-with-hyphens
+   - Prefer alias links to broad concepts over near-duplicates
+   - No speculative links -- only wikilink concepts actually discussed
+8. Update `state.yaml`: state -> `CONCEPTS_DONE`, populate concepts-created/updated/connections
 
-6. **Update `_index.md`** — Add or update the entry for this project in the
-   Map of Content. Include: source type, date analyzed, one-line summary,
-   link to the project's `_<project-name>_overview`. Also update the "Concepts by Category" section with
-   any new concept pages.
+---
 
-   When updating `_index.md`, count the actual concept pages created (check the
-   registry), not the number listed in `_<project-name>_overview.md`'s Concepts Introduced
-   section. The two lists must agree — if they don't, fix the discrepancy before
-   committing.
+## Phase 4: Commit & Push
 
-7. **Quick link checks** — Catch syntax errors before committing (cheap checks only):
-   - Links must be **lowercase-with-hyphens** — `[[ones-complement|Ones-complement]]`
-     not `[[Ones-complement]]`
-   - Prefer alias links to existing broad concepts over creating near-duplicates:
-     `[[cooperative-multitasking|multitasking]]` not `[[multitasking]]`
-   - **No speculative links** — only wikilink concepts the analysis actually
-     discusses. A wikilink is a commitment to create a concept page.
-   - Comprehensive link validation (orphan detection, registry sync, external
-     URL checks) is handled by `/educator-audit` — see below.
+**State transition:** `CONCEPTS_DONE -> COMMITTED`
 
-### Phase 4: Commit & Push
-
-The educator-briefs vault is a git repo. After writing all files, commit and push:
-
-1. `cd ~/.claude/educator-briefs` (use the symlink path, not the /mnt/ path)
-2. Create a branch: `git checkout -b brief/<project-name>`
-   - **Multi-source:** use `brief/batch-YYYY-MM-DD` (e.g., `brief/batch-2026-03-27`)
-3. Stage all new/modified files: `git add <project-name>/ _concepts/ _index.md` — this includes `_concepts/_registry.yaml` and any existing project `_<project-name>_overview.md` files updated with reciprocal cross-project connections
-   - **Multi-source:** stage all project folders: `git add <project-1>/ <project-2>/ ... _concepts/ _index.md`
-4. Commit: `git commit -m "feat(<project-name>): add educational brief"`
-   - **Multi-source:** `git commit -m "feat(batch): add briefs for <project-1>, <project-2>, ..."`
+1. `cd ~/.claude/educator-briefs`
+2. Create branch: `git checkout -b brief/<project-name>`
+   (multi-source: `brief/batch-YYYY-MM-DD`)
+3. Stage files: `git add <project>/ _concepts/ _index.md`
+   Include any existing project overviews updated with reciprocal connections.
+4. Commit: `git commit -m "feat(<project>): add educational brief"`
 5. Push: `git push -u origin brief/<project-name>`
-6. Create PR: `gh pr create --title "feat(<project-name>): add educational brief" --body "New analysis of <project-name>" --fill`
+6. Create PR: `gh pr create --title "feat(<project>): add educational brief" --body "..." --fill`
 7. Merge: `gh pr merge --squash --delete-branch`
-8. Return to main: `git checkout main && git pull`
+8. Return: `git checkout main && git pull`
+9. Update `state.yaml`: state -> `COMMITTED`, populate branch/sha/pr
 
-If the brief is an **update** to an existing project, use the commit message
-`chore(<project-name>): update educational brief` instead.
+---
 
-### Phase 5: Report
+## Phase 5: Report
+
+**State transition:** `COMMITTED -> COMPLETE`
 
 Present to the user:
-- Vault location
-- **Per source:** brief summary (3-5 key findings each)
-- Suggestion to open `~/.claude/educator-briefs/` as an Obsidian vault
-- Total count of new concept pages created
-- Any cross-project connections discovered (including between batch sources
-  and with previously analyzed projects)
-### Phase 6: Audit
+- Vault location (`~/.claude/educator-briefs/`)
+- Per-source: brief summary (3-5 key findings)
+- Total new concept pages created
+- Cross-project connections discovered
+- Suggestion to open as an Obsidian vault
+- **Prompt to run validation:** "Run `/educator-audit <project-name>` to
+  validate links, registry consistency, and section quality."
 
-After reporting, automatically dispatch the educator-audit skill to validate
-the brief. This runs in a fresh context via the Agent tool, which is the
-whole point — a separate pass catches what the creation process missed.
+Update `state.yaml`: state -> `COMPLETE`
 
-1. For each source analyzed, dispatch via Agent tool:
-   ```
-   /educator-audit <project-name>
-   ```
-   - **Multi-source:** dispatch once per source, sequentially
-2. Let the audit run its full process (link integrity, registry consistency,
-   section quality). It will auto-fix structural issues and report quality
-   findings.
-3. After the audit completes, present its summary to the user alongside
-   the Phase 5 report. If the audit committed fixes, note that.
-4. If the audit found quality issues that need regeneration, list them
-   so the user can decide whether to address them now or later.
-
-**Do not skip this phase.** The audit exists because creation-time
-validation is unreliable. If the Agent tool is unavailable or the audit
-fails to dispatch, tell the user to run `/educator-audit <project-name>`
-manually.
-
-### Website Source — Repo Discovery & Fallback
-
-When analyzing a website (non-GitHub HTTPS URL), try to find the source code
-before falling back to external-only observation.
-
-#### Step 1: Repo Discovery
-
-Use WebFetch on the main URL and look for a source repository link:
-
-1. **Page scan** — check the page content for GitHub/GitLab/Bitbucket links in:
-   - Footer (common location for "View source", "GitHub" links)
-   - Header/nav (open-source projects often link the repo prominently)
-   - Meta tags (`<meta>` with repo URLs, `<link rel="source">`)
-2. **Common URL patterns** — try `https://github.com/<domain-name-parts>` for
-   obvious cases (e.g., `https://fastify.dev` → check `https://github.com/fastify/fastify`)
-
-**Budget: one WebFetch call on the main URL.** Don't crawl subpages looking for
-a repo link. If it's not on the main page or obvious from the domain, move on.
-
-#### Step 2a: Repo Found → Pivot to Code Analysis
-
-If a repo URL is discovered:
-
-1. Clone it as a GitHub repo source: `git clone --depth 1 <repo-url> /tmp/educator-<name>`
-2. Run the **full** analysis process (all phases, all sections)
-3. Set the source URL to the discovered repo for file links and code examples
-4. In `_<project-name>_overview.md`, note the discovery:
-   ```
-   **Source:** [owner/repo](https://github.com/owner/repo)
-   *(discovered via [domain.com](https://domain.com))*
-   ```
-5. **Caveat in overview:** Note that the deployed site may differ from the
-   public source — especially for monorepos or heavily customized deployments.
-   If the repo is a monorepo, identify which subdirectory corresponds to the
-   website and scope the analysis to that subtree.
-
-The project subfolder is named after the **repo** (e.g., `fastify--fastify`),
-not the website domain, since the analysis is based on actual source code.
-
-#### Step 2b: No Repo Found → External Observation
-
-If no repo is discovered, fall back to external-only analysis:
-
-1. Use WebFetch on the main URL and 2-3 subpages
-2. Analyze: frontend framework detection (view source, meta tags, script URLs),
-   API patterns (network requests visible in markup), performance approach
-   (lazy loading, CDN usage, SSR vs CSR indicators), security headers
-3. Skip sections that require source code access: `evolution.md`, `testing-strategy.md`
-4. Mark analysis as "external observation only" in the overview
-5. Focus on: technology choices, observable architecture, design patterns in
-   the UI/UX layer, and what the public-facing choices reveal about priorities
-
-When writing sections for any external-observation source (website with no
-repo, or any source where code access fails):
-
-- **Code examples:** Omit. Add a note in `_<project-name>_overview.md` body:
-  "Code examples are not included — no source code is publicly available."
-- **Relevant files header:** Omit the blockquote entirely. The absence is
-  self-explanatory for external observation.
-- **Minimum depth:** Word count minimums still apply. The absence of code
-  examples should be compensated with deeper analytical prose, Mermaid
-  diagrams, and external resource links.
+---
 
 ## Cleanup
 
-- Remove any `/tmp/educator-*` directories created during the process
-- Run `rm -rf /tmp/educator-<name>` and **check the exit code**
-- If deletion fails for any reason (permissions, busy file handle, etc.):
-  1. **Do not silently continue.** Tell the user the cleanup failed.
-  2. Provide the exact command to run manually:
-     ```
-     rm -rf /tmp/educator-<name>
-     ```
-  3. Explain why it may have failed if the error message gives a clue
-- Never leave cloned repos in `/tmp/` without the user knowing about it
+- `rm -rf /tmp/educator-<name>` and **check exit code**
+- If deletion fails: tell the user, provide the manual command, explain why
+- Never leave cloned repos in `/tmp/` without the user knowing
+
+---
+
+## Website Sources
+
+### Repo Discovery
+
+Use one WebFetch call on the main URL. Look for GitHub/GitLab/Bitbucket links in
+footer, header, meta tags. Try `https://github.com/<domain-parts>` for obvious cases.
+
+### Repo Found -> Code Analysis
+
+Clone as GitHub source. Run full analysis. Note discovery in overview:
+`**Source:** [owner/repo](url) *(discovered via [domain](url))*`
+
+### No Repo -> External Observation
+
+Use WebFetch on main URL + 2-3 subpages. Analyze observable tech choices.
+Skip `evolution.md` and `testing-strategy.md`. Mark as "external observation only."
+Omit code examples and relevant files headers. Compensate with deeper analytical
+prose, Mermaid diagrams, and external resource links.
+
+---
+
+## Project Subfolder Naming
+
+- Local path -> directory name (e.g., `my-app`)
+- GitHub -> `owner--repo` (e.g., `expressjs--express`)
+- Website -> domain name (e.g., `stripe.com`)
+- Package -> package name (e.g., `fastify`)
+
+If subfolder exists, ask user: overwrite or timestamped version?
+
+### Project Subfolder Layout
+
+```
+<project-name>/
++-- _<project-name>_overview.md
++-- architecture.md
++-- technology-choices.md
++-- design-patterns.md
++-- key-decisions.md
++-- gaps-vulnerabilities.md
++-- dependencies.md
++-- evolution.md
++-- testing-strategy.md
++-- if-starting-over.md
++-- learning-path.md
++-- glossary.md
++-- resources.md
+```
+
+---
+
+## Resume Protocol
+
+On invocation, before source detection:
+
+1. Check for existing `/tmp/educator-*/state.yaml` files
+2. If found and state is not `COMPLETE`, offer to resume:
+   "Found in-progress analysis for `<source>` (state: `<state>`). Resume?"
+3. On resume: read state file, load registers for current state, continue
+4. If registers are missing, fall back to the previous state that creates them
+
+---
 
 ## Guidelines
 
-- **Teach, don't lecture.** Write as a knowledgeable colleague explaining their
-  reasoning, not a textbook. Use analogies for complex concepts.
-- **Honest assessment.** If the code is messy, say so — but explain what forces
-  likely led there. Empathy for past developers is itself a lesson.
-- **No moralizing.** "This uses var instead of const" is not a gap. Focus on
-  architectural and design-level observations, not style lint.
-- **Transferable knowledge first.** Every observation should teach a principle
-  the reader can apply elsewhere. Project-specific details support the principle,
-  not the other way around.
-- **Difficulty calibration.** Tag sections honestly. If understanding the
-  architecture requires knowing distributed systems theory, that's advanced —
-  don't pretend it's beginner-friendly.
-- **Living vault.** The vault grows with each analysis. Concept pages accumulate
-  cross-project evidence. The value compounds over time.
-- **Filename is `_<project-name>_overview.md`, not `_overview.md` or `overview.md`.**
-  The underscore prefix sorts the file to the top of the project folder in Obsidian,
-  and the project name disambiguates overviews across the vault. **NEVER** create a
-  file named `_overview.md` or `overview.md`. Every reference, wikilink, and file
-  write must use `_<project-name>_overview.md`.
-- **Concept filenames must be kebab-case.** Every concept file is
-  `<lowercase-with-hyphens>.md` — e.g., `dependency-injection.md`, not
-  `Dependency-Injection.md` or `dependency_injection.md`. Wikilink targets
-  must match this casing exactly: `[[dependency-injection]]`. If a concept
-  name has uppercase or non-hyphen separators, normalize it before creating
-  the file. This is the #1 cause of orphaned concept links.
-- **One writer per file.** When dispatching agents to write files, **never**
-  have the main session AND an agent write the same file. Assign each file to
-  exactly one writer. Competing writes cause git merge conflicts and silent
-  data loss. Either the main session owns a file or the agent does — never both.
-- **Background agents: use Bash for file writes.** Background subagents
-  dispatched via the Agent tool may get `Write` denied for paths outside the
-  project root (like `~/.claude/educator-briefs/`). When dispatching agents
-  that write to the vault, instruct them to use `Bash` with heredoc syntax
-  (`cat > "$file" << 'CONTENT'`) as the primary write method. The `Edit` tool
-  works for modifications to existing files; `Write` for new files may not.
+- **Teach, don't lecture.** Knowledgeable colleague, not textbook.
+- **Honest assessment.** If the code is messy, say so with empathy.
+- **No moralizing.** Focus on architectural observations, not style lint.
+- **Transferable knowledge first.** Every observation teaches a reusable principle.
+- **Difficulty calibration.** Tag sections honestly.
+- **Living vault.** Concept pages accumulate cross-project evidence over time.
+- **Filename is `_<project-name>_overview.md`** -- never `_overview.md` or `overview.md`.
+- **Concept filenames must be kebab-case.** `dependency-injection.md` not
+  `Dependency-Injection.md`. #1 cause of orphaned links.
+- **One writer per file.** Never have main session AND an agent write the same file.
+- **Background agents: use Bash for file writes.** `Write` may be denied for
+  vault paths. Use `cat > "$file" << 'CONTENT'` as primary write method.
+  `Edit` works for modifications to existing files.
