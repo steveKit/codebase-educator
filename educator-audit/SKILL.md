@@ -1,7 +1,7 @@
 ---
 name: educator-audit
 description: Audit the educator-briefs vault for link integrity, registry consistency, and section quality. Use when the user asks to "audit the vault", "check educator links", "validate briefs", "fix orphaned links", or "educator audit".
-argument-hint: "[project-name] — audit one brief, or omit for vault-wide audit"
+argument-hint: "[project-name] [--since <duration|date>] [--full] — audit one brief, scope by recency, or force full vault-wide"
 disable-model-invocation: false
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch]
 ---
@@ -20,25 +20,47 @@ URLs, missing backlinks, and section quality gaps.
 
 | Input | Scope | What's checked |
 |---|---|---|
-| No argument | **Vault-wide** | All projects, all concepts, full registry, `_index.md` |
-| `<project-name>` | **Single brief** | That project's sections + its concept links + registry entries |
+| No argument | **Smart vault-wide** | Projects modified since their `last-educator-run` in vault-state + vault-wide structural checks |
+| `<project-name>` | **Single brief** | That project's sections + its concept links + registry entries (always full, ignores `--since`) |
+| `--since <duration\|date>` | **Windowed vault-wide** | Only projects with git changes since the given time. Duration: `1w`, `2w`, `1m`. Date: `2026-03-15`. |
+| `--full` | **Full vault-wide** | All projects, all concepts, full registry, `_index.md` (original behavior) |
+
+### Smart Default Behavior
+
+When invoked with no arguments and no flags:
+
+1. Read `_concepts/_vault-state.yaml`
+2. For each project, compare `last-educator-run` against `last-audit`
+3. **Projects to audit:** those where `last-audit` is `null` OR `last-audit < last-educator-run`
+4. Always include vault-wide structural checks (Phase 3a, 3c, 3d) regardless of windowing
+5. If vault-state is missing or empty, fall back to `--full` behavior
 
 ## Process
 
 ### Phase 1: Inventory
 
-1. **Load registry** — Read `_concepts/_registry.yaml` into memory. If it
-   doesn't exist, note this as a critical finding (codebase-educator should
-   have created it).
+1. **Load registry** — Read `_concepts/_registry.yaml` into memory (v2 enriched
+   format with `category` + `projects` per entry). If it doesn't exist, note
+   this as a critical finding. If it uses v1 flat format, note as fixable
+   (migration needed).
 
-2. **Discover projects** — Glob `~/.claude/educator-briefs/*/` to find all
+2. **Load vault-state** — Read `_concepts/_vault-state.yaml`. If missing,
+   note as fixable (will be created in Phase 5). Use it to determine which
+   projects are in scope (see Modes above).
+
+3. **Load connections** — Read `_concepts/_connections.yaml`. If missing,
+   note as fixable (will be created in Phase 5).
+
+4. **Discover projects** — Glob `~/.claude/educator-briefs/*/` to find all
    project subdirectories. Exclude `_concepts/`. If a `<project-name>` argument
    was provided, filter to just that project (error if it doesn't exist).
+   If using smart default or `--since`, filter to in-scope projects for
+   Phases 2 and 4 (Phases 3a, 3c, 3d remain vault-wide).
 
-3. **Discover concept files** — Glob `~/.claude/educator-briefs/_concepts/*.md`
+5. **Discover concept files** — Glob `~/.claude/educator-briefs/_concepts/*.md`
    to get the list of actual concept pages on disk.
 
-4. **Read `_index.md`** — Parse the Projects table to know which projects are
+6. **Read `_index.md`** — Parse the Projects table to know which projects are
    currently indexed.
 
 ### Phase 2: Link Integrity
@@ -111,6 +133,10 @@ For each project:
 
 ### Phase 3: Registry & Index Consistency
 
+**Phase 3 checks are always vault-wide**, even in windowed mode. These are
+cheap structural checks and must catch drift regardless of which projects
+were recently modified.
+
 #### 3a. Registry ↔ Filesystem Sync
 
 Compare the registry keys against actual `_concepts/*.md` files:
@@ -118,8 +144,10 @@ Compare the registry keys against actual `_concepts/*.md` files:
 | Condition | Severity | Auto-fix |
 |---|---|---|
 | Key in registry, no `.md` file | Critical | Create concept page from registry context |
-| `.md` file exists, no registry key | Fixable | Add key to registry, scan "Seen In" for project list |
+| `.md` file exists, no registry key | Fixable | Add key to registry with `category` from frontmatter, scan "Seen In" for project list |
 | Registry lists a project that has no folder | Warning | Remove stale project from registry entry |
+| Registry uses v1 flat format (no `category`) | Fixable | Migrate: read each concept's frontmatter, rewrite as v2 |
+| Registry `category` doesn't match concept frontmatter | Fixable | Update registry to match frontmatter (frontmatter is authoritative) |
 
 #### 3b. Concept Backlink Completeness
 
@@ -138,19 +166,35 @@ For each concept in the registry:
 2. **Missing entries** — project folder exists but isn't in the table → fixable
 3. **Stale entries** — project listed but folder doesn't exist → fixable
 4. **Concepts by Category** — verify every concept page is listed under its
-   category. Cross-reference the `category` field from each concept's YAML
-   frontmatter.
+   category. Use the registry's `category` field (faster than reading every
+   concept page's frontmatter). If a concept's registry category is `unknown`,
+   read the frontmatter and fix the registry entry.
 
 #### 3d. Cross-Project Connections
 
 For each project in scope:
 
-1. Use the registry to find concepts shared with other projects
+1. **Read `_connections.yaml`** for pre-computed overlaps (much faster than
+   scanning the full registry). If missing, fall back to computing from registry.
 2. Read the project's `_<project-name>_overview.md` "Cross-Project Connections" section
-3. **Missing connections** — shared concept exists but no connection block
-   in either project's overview → fixable
+3. **Missing connections** — `_connections.yaml` shows overlap but no connection
+   block in either project's overview → fixable
 4. **One-directional connections** — project A mentions B but B doesn't
    mention A → fixable
+5. **Stale connections** — connection referenced in overview but not in
+   `_connections.yaml` or registry → warning (may indicate concept was delinked)
+6. **Connections index drift** — if connections were computed from registry
+   (fallback), compare against `_connections.yaml` and report discrepancies → fixable
+
+#### 3e. Vault-State Consistency
+
+1. Compare `_vault-state.yaml` projects against discovered project folders
+2. **Missing entries** — project folder exists but not in vault-state → fixable
+   (populate from git log)
+3. **Stale entries** — project in vault-state but folder doesn't exist → fixable
+   (remove entry)
+4. **Concept count drift** — `concept-count` doesn't match actual registry
+   count for that project → fixable
 
 ### Phase 4: Section Quality
 
@@ -236,7 +280,10 @@ For each orphaned concept link (remaining after 5a-pre):
 
 #### 5b. Registry Repairs
 
-- Add missing keys (from files without registry entries)
+- Add missing keys (from files without registry entries) — include `category`
+  from concept frontmatter in v2 format
+- Migrate v1 flat entries to v2 enriched format (add `category`)
+- Fix category mismatches (frontmatter is authoritative)
 - Remove stale project references
 - Sort registry alphabetically by key
 
@@ -270,18 +317,38 @@ For each orphaned concept link (remaining after 5a-pre):
 - Add to the most appropriate category (Core Stack, Dependencies, Pattern
   References, or Further Reading)
 
+#### 5g. Connections Index Repairs
+
+- If `_connections.yaml` is missing, rebuild from registry (compute all
+  pairwise project overlaps)
+- If `_connections.yaml` exists but has stale/missing entries, update
+  incrementally — add missing pairs, remove stale ones
+- Both directions must be present (A→B and B→A)
+
+#### 5h. Vault-State Repairs
+
+- If `_vault-state.yaml` is missing, create it: populate `last-educator-run`
+  from `git log` per project, set `last-audit` to null, compute
+  `concept-count` from registry
+- Fix stale entries (projects that no longer exist)
+- Add missing entries (projects that exist but aren't tracked)
+- Fix concept-count drift
+
 ### Phase 6: Commit & Push
 
 If any files were modified:
 
 1. `cd ~/.claude/educator-briefs`
-2. `git checkout -b audit/<project-name>` (or `audit/vault-YYYY-MM-DD` for
+2. **Update `_vault-state.yaml`:**
+   - For each audited project, set `last-audit` to current ISO timestamp
+   - For vault-wide audits, also set `last-global-audit`
+3. `git checkout -b audit/<project-name>` (or `audit/vault-YYYY-MM-DD` for
    vault-wide)
-3. Stage modified files: `git add -A`
-4. Show `git diff --cached --stat` to the user
-5. **Wait for user approval before committing.** Present the summary of
+4. Stage modified files: `git add -A`
+5. Show `git diff --cached --stat` to the user
+6. **Wait for user approval before committing.** Present the summary of
    changes and ask "Commit these fixes?"
-6. On approval:
+7. On approval:
    - `git commit -m "fix(<scope>): audit repairs — <summary>"`
    - `git push -u origin audit/<scope>`
    - `gh pr create --title "fix(<scope>): audit repairs" --body "<details>" --fill`
@@ -295,6 +362,11 @@ Present a structured summary:
 ```
 ## Educator Audit Report — <scope>
 
+### Scope
+- Mode: <smart default | --since <value> | --full | single project>
+- Projects audited: N of M total
+- Reason: <"modified since last audit" | "all" | "user-specified">
+
 ### Link Integrity
 - Wikilinks checked: N
 - Orphaned links found: N (N fixed)
@@ -306,9 +378,17 @@ Present a structured summary:
 - Concepts in registry: N
 - Concept files on disk: N
 - Registry mismatches fixed: N
+- Registry v1→v2 migrations: N
 - Missing backlinks added: N
 - _index.md entries added/removed: N
 - Cross-project connections added: N
+- Connection index entries added: N
+
+### Vault State
+- Projects tracked: N
+- Entries added/removed: N
+- Concept count fixes: N
+- Last audit timestamps updated: N
 
 ### Section Quality
 - Sections checked: N
@@ -350,3 +430,11 @@ For vault-wide audits, break down findings per project before the totals.
   If a check is inconclusive (e.g., a URL cannot be verified within
   the WebFetch budget), report it as "unverified" rather than
   assuming pass or fail.
+- **Clean up educator `/tmp/` after audit.** The codebase-educator skill
+  defers `/tmp/educator-<name>/` cleanup until after audit. If you find
+  a `/tmp/educator-*/` directory for the project you just audited,
+  clean it up: `rm -rf /tmp/educator-<name>` and check exit code.
+  This completes the educator→audit→cleanup lifecycle.
+- **Vault-state is bookkeeping, not gating.** Missing or stale vault-state
+  entries should be fixed silently. Never refuse to audit a project because
+  its vault-state entry is missing — create it.

@@ -57,7 +57,7 @@ use, not upfront -- only load the schema you need for the current phase.
 | 1.5 (Quality) | `quality-assessment.md` | `gather.yaml` |
 | 2 (Write) | `sections/_shared.md` + the ONE section template | `gather.yaml`, `url-index.yaml`, `quality.yaml` |
 | 2.5 (Sweep) | nothing extra | `sections.yaml` |
-| 3 (Concepts) | `concept-template.md` | `sections.yaml`, registry on disk |
+| 3 (Concepts) | `concept-template.md` | `sections.yaml`, registry + connections + vault-state on disk |
 | 4-5 (Commit/Report) | nothing extra | `state.yaml`, `sections.yaml` |
 
 **Never load all 13 section templates at once.** Each section writer loads
@@ -179,7 +179,9 @@ If `~/.claude/educator-briefs/_index.md` doesn't exist, create the vault
 structure. See `references/vault-bootstrap.md` for templates:
 - `_index.md` (Map of Content)
 - `_concepts/` directory
-- `_concepts/_registry.yaml` (empty with header comments)
+- `_concepts/_registry.yaml` (empty with header comments, v2 enriched schema)
+- `_concepts/_vault-state.yaml` (empty with header comments)
+- `_concepts/_connections.yaml` (empty with header comments)
 
 If the project subfolder already exists, ask the user whether to overwrite
 or create a timestamped version.
@@ -290,11 +292,36 @@ Scan for missed concept wikilink opportunities.
 
 Load `references/concept-template.md` for the concept page template.
 
-### Registry
+### Registry (v2 — Enriched)
 
-Uses `_concepts/_registry.yaml` -- a YAML index mapping concept names to
-projects. If the registry doesn't exist (older vault), build it once by
-scanning `_concepts/*.md` for "## Seen In" entries.
+Uses `_concepts/_registry.yaml` with enriched entries that include both
+`category` and `projects`:
+
+```yaml
+strategy-pattern:
+  category: pattern
+  projects:
+    - expressjs--express
+    - pallets--flask
+```
+
+If the registry doesn't exist (older vault), build it by scanning
+`_concepts/*.md` for "## Seen In" entries and frontmatter `category`.
+If the registry exists but uses the v1 flat format (concept -> list),
+migrate in-place: read each concept page's frontmatter for category,
+rewrite as v2.
+
+### Vault Metadata Files
+
+Phase 3 also reads and updates two vault-level metadata files:
+
+- **`_concepts/_connections.yaml`** — Pre-computed project-to-project concept
+  overlaps. Read at start of step 4 to skip discovery; updated with new
+  project's connections at end of step 4.
+- **`_concepts/_vault-state.yaml`** — Per-project tracking. Updated after
+  commit (Phase 4) with `last-educator-run` and `concept-count`.
+
+If either file is missing, create it from `references/vault-bootstrap.md`.
 
 ### Steps
 
@@ -306,9 +333,10 @@ scanning `_concepts/*.md` for "## Seen In" entries.
      filename AND registry key AND wikilink target.
    - Check registry (not filesystem) for existence
    - **New concept:** Create page from `references/concept-template.md`,
-     add to registry with this project as first entry
+     add to registry with `category` (from frontmatter) and this project
+     as first entry
    - **Existing concept:** Append backlink under "## Seen In", add project
-     to registry list
+     to registry's `projects` list
 
    **Backlink format:** `[[<project>/_<project>_overview|<project>]]`
    (bare `[[project]]` resolves to nothing -- it's a folder).
@@ -316,19 +344,25 @@ scanning `_concepts/*.md` for "## Seen In" entries.
    **Batch writes:** Group new concepts and write in quick succession.
    Batch Edit calls for existing concept backlinks.
 
-4. **Cross-project connections** -- Use registry to find shared concepts:
-   - Filter entries where the list contains both new project + others
+4. **Cross-project connections** -- Use the connection index + registry:
+   - **Load `_connections.yaml`** for existing connection data
+   - **From registry**, find concepts where `projects` list contains both
+     the new project and at least one other project
+   - For each connected project, collect the shared concept list
    - Read "## Seen In" in shared concept pages for usage descriptions
    - Write "## Cross-Project Connections" in new project's overview
    - **Update each connected project's overview** with reciprocal entry
+   - **Update `_connections.yaml`**: add new project's entries and add the
+     new project to each connected project's entry (both directions)
    - Format:
      ```
      Concepts shared with [[other/_other_overview|Display Name]]:
      - **Concept** -- how this project uses it; how the other uses it.
      ```
 
-5. **Write registry** back to disk
+5. **Write registry** back to disk (v2 enriched format)
 6. **Update `_index.md`** -- add project row, update Concepts by Category
+   (use registry `category` field rather than reading concept frontmatter)
 7. **Quick link checks:**
    - All wikilinks are lowercase-with-hyphens
    - Prefer alias links to broad concepts over near-duplicates
@@ -342,16 +376,21 @@ scanning `_concepts/*.md` for "## Seen In" entries.
 **State transition:** `CONCEPTS_DONE -> COMMITTED`
 
 1. `cd ~/.claude/educator-briefs`
-2. Create branch: `git checkout -b brief/<project-name>`
+2. **Update `_vault-state.yaml`** — set this project's entry:
+   - `last-educator-run`: current ISO timestamp
+   - `concept-count`: number of concepts linked to this project (from registry)
+   - `last-audit`: leave unchanged (or `null` for new projects)
+3. Create branch: `git checkout -b brief/<project-name>`
    (multi-source: `brief/batch-YYYY-MM-DD`)
-3. Stage files: `git add <project>/ _concepts/ _index.md`
+4. Stage files: `git add <project>/ _concepts/ _index.md`
    Include any existing project overviews updated with reciprocal connections.
-4. Commit: `git commit -m "feat(<project>): add educational brief"`
-5. Push: `git push -u origin brief/<project-name>`
-6. Create PR: `gh pr create --title "feat(<project>): add educational brief" --body "..." --fill`
-7. Merge: `gh pr merge --squash --delete-branch`
-8. Return: `git checkout main && git pull`
-9. Update `state.yaml`: state -> `COMMITTED`, populate branch/sha/pr
+   The `_concepts/` glob catches registry, connections, and vault-state.
+5. Commit: `git commit -m "feat(<project>): add educational brief"`
+6. Push: `git push -u origin brief/<project-name>`
+7. Create PR: `gh pr create --title "feat(<project>): add educational brief" --body "..." --fill`
+8. Merge: `gh pr merge --squash --delete-branch`
+9. Return: `git checkout main && git pull`
+10. Update `state.yaml`: state -> `COMMITTED`, populate branch/sha/pr
 
 ---
 
@@ -365,8 +404,9 @@ Present to the user:
 - Total new concept pages created
 - Cross-project connections discovered
 - Suggestion to open as an Obsidian vault
-- **Prompt to run validation:** "Run `/educator-audit <project-name>` to
-  validate links, registry consistency, and section quality."
+- **Prompt to run audit now:** "Run `/educator-audit <project-name>` to
+  validate links, registry consistency, and section quality. The `/tmp/`
+  registers are still available for debugging if issues are found."
 
 Update `state.yaml`: state -> `COMPLETE`
 
@@ -374,7 +414,14 @@ Update `state.yaml`: state -> `COMPLETE`
 
 ## Cleanup
 
-- `rm -rf /tmp/educator-<name>` and **check exit code**
+**Do NOT clean up `/tmp/educator-<name>/` automatically after Phase 5.**
+The registers in `/tmp/` hold structured state (gather, quality, sections)
+that is useful for debugging if the follow-up audit discovers issues.
+
+- **After the user runs `/educator-audit`** (or explicitly declines), then
+  clean up: `rm -rf /tmp/educator-<name>` and **check exit code**
+- If the user does not run the audit in this session, remind them that
+  `/tmp/educator-<name>/` still exists and will be cleaned on reboot
 - If deletion fails: tell the user, provide the manual command, explain why
 - Never leave cloned repos in `/tmp/` without the user knowing
 
