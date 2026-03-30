@@ -576,6 +576,10 @@ by scanning `_concepts/*.md` for "## Seen In" entries. Then proceed normally.
    Phase 2.5 sweep). Deduplicate.
 
 3. **Concept pages** — For each concept in the list:
+   - **Normalize the name to kebab-case first:** lowercase, hyphens only,
+     no underscores or spaces. `Dependency Injection` → `dependency-injection`.
+     `cooperative_multitasking` → `cooperative-multitasking`. The normalized
+     name is the filename AND the registry key AND the wikilink target.
    - **Check the registry** (not the filesystem) to see if the concept exists.
    - If the concept is **not** in the registry → create the page using
      `references/concept-template.md`, then add the concept to the registry
@@ -788,3 +792,19 @@ repo, or any source where code access fails):
   and the project name disambiguates overviews across the vault. **NEVER** create a
   file named `_overview.md` or `overview.md`. Every reference, wikilink, and file
   write must use `_<project-name>_overview.md`.
+- **Concept filenames must be kebab-case.** Every concept file is
+  `<lowercase-with-hyphens>.md` — e.g., `dependency-injection.md`, not
+  `Dependency-Injection.md` or `dependency_injection.md`. Wikilink targets
+  must match this casing exactly: `[[dependency-injection]]`. If a concept
+  name has uppercase or non-hyphen separators, normalize it before creating
+  the file. This is the #1 cause of orphaned concept links.
+- **One writer per file.** When dispatching agents to write files, **never**
+  have the main session AND an agent write the same file. Assign each file to
+  exactly one writer. Competing writes cause git merge conflicts and silent
+  data loss. Either the main session owns a file or the agent does — never both.
+- **Background agents: use Bash for file writes.** Background subagents
+  dispatched via the Agent tool may get `Write` denied for paths outside the
+  project root (like `~/.claude/educator-briefs/`). When dispatching agents
+  that write to the vault, instruct them to use `Bash` with heredoc syntax
+  (`cat > "$file" << 'CONTENT'`) as the primary write method. The `Edit` tool
+  works for modifications to existing files; `Write` for new files may not.

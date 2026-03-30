@@ -2,7 +2,7 @@
 name: educator-audit
 description: Audit the educator-briefs vault for link integrity, registry consistency, and section quality. Use when the user asks to "audit the vault", "check educator links", "validate briefs", "fix orphaned links", or "educator audit".
 argument-hint: "[project-name] — audit one brief, or omit for vault-wide audit"
-disable-model-invocation: true
+disable-model-invocation: false
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch]
 ---
 
@@ -68,8 +68,13 @@ For each project's section files (`*.md` in the project folder):
      `dependencies`, `evolution`, `testing-strategy`, `if-starting-over`,
      `learning-path`, `glossary`, `resources`
    - Verify the target project folder exists on disk
-5. **Check casing** — All concept link targets must be `lowercase-with-hyphens`.
-   Flag any that contain uppercase characters.
+5. **Check casing (kebab-case)** — All concept link targets AND filenames must
+   be `lowercase-with-hyphens` (kebab-case). Flag and auto-fix any that contain:
+   - Uppercase characters (`Dependency-Injection` → `dependency-injection`)
+   - Underscores (`cooperative_multitasking` → `cooperative-multitasking`)
+   - Spaces or other non-hyphen separators
+   This is the most common cause of orphaned concept links — the wikilink
+   target doesn't match the actual filename.
 
 #### 2b. External URL Validation
 
@@ -198,9 +203,23 @@ Report sections that appear under-linked.
 
 Apply fixes for all issues marked **fixable** in Phases 2-3. Group by type:
 
+#### 5a-pre. Kebab-Case Normalization
+
+Before processing orphaned links, fix casing issues (from Phase 2a step 5):
+
+1. **Rename non-kebab-case concept files** — `git mv` the file to the
+   normalized name (lowercase, hyphens only). Update `_registry.yaml` key.
+2. **Fix wikilinks** — In every section file that references the old name,
+   replace `[[Old-Name]]` with `[[old-name]]` (or `[[old-name|Old Name]]`
+   if an alias is needed for display). Use `replace_all` for efficiency.
+3. **Fix backlinks** — Update "Seen In" entries in concept pages that
+   reference the renamed concept.
+
+This step resolves many "orphaned" links that are really just casing mismatches.
+
 #### 5a. Orphaned Wikilinks
 
-For each orphaned concept link:
+For each orphaned concept link (remaining after 5a-pre):
 
 1. Check if a similar concept already exists in the registry (fuzzy match —
    e.g., `middleware-pattern` vs `middleware`). If so, fix the wikilink to
