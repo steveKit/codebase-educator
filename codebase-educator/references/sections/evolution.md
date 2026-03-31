@@ -3,6 +3,10 @@
 **Goal:** Reader learns to read a codebase's history and understand how
 software systems evolve under real-world pressure.
 
+**Skip-eligible:** Yes — skip when <50 commits AND <6 months history AND
+no migration artifacts. Young projects with no evolution story shouldn't
+have this section padded.
+
 ## Structure
 
 1. **Timeline Indicators** — Evidence of age and evolution:

@@ -27,29 +27,63 @@ tone-guidance: |
   with specific areas that could improve. Testing and security sections
   need observation markers.
 
-# Per-section quality notes (pre-computed for frontmatter)
+# Per-section quality notes AND depth tiers (pre-computed)
+# depth: deep | standard | light | skip
+# skip-reason: only present when depth is "skip"
 section-notes:
-  architecture: "Strong layered design worth studying"
-  technology-choices: "Mature, well-reasoned choices"
-  design-patterns: "Clean middleware pattern; some forced abstractions in router"
-  key-decisions: "Key decisions well-evidenced in code structure"
-  gaps-vulnerabilities: "Security surface needs observation markers"
-  dependencies: "Minimal, well-maintained dependency set"
-  evolution: "10+ years of clean evolution visible"
-  testing-strategy: "Coverage gaps in integration tests — mark as cautionary"
-  if-starting-over: "Strong foundation; few changes needed"
-  learning-path: "Clear module boundaries make this easy to navigate"
-  glossary: "Standard"
-  resources: "Standard"
-  overview: "Solid source — mixed only in testing and security"
+  architecture:
+    note: "Strong layered design worth studying"
+    depth: deep
+  technology-choices:
+    note: "Mature, well-reasoned choices"
+    depth: standard
+  design-patterns:
+    note: "Clean middleware pattern; some forced abstractions in router"
+    depth: deep
+  key-decisions:
+    note: "Key decisions well-evidenced in code structure"
+    depth: standard
+  gaps-vulnerabilities:
+    note: "Security surface needs observation markers"
+    depth: standard
+  dependencies:
+    note: "Minimal, well-maintained dependency set"
+    depth: light
+  evolution:
+    note: "10+ years of clean evolution visible"
+    depth: deep
+  testing-strategy:
+    note: "Coverage gaps in integration tests — mark as cautionary"
+    depth: standard
+  if-starting-over:
+    note: "Strong foundation; few changes needed"
+    depth: standard
+  learning-path:
+    note: "Clear module boundaries make this easy to navigate"
+    depth: standard
+  glossary:
+    note: "Standard"
+    depth: light
+  resources:
+    note: "Standard"
+    depth: standard
+  overview:
+    note: "Solid source — mixed only in testing and security"
+    depth: standard
 ```
 
 ## How Section Writers Use This
 
 1. Read `overall-rating` to set the general tone
-2. Read `section-notes.<section>` and paste into YAML frontmatter `quality-note`
-3. If rating is `mixed` or `cautionary`, apply observation markers to
+2. Read `section-notes.<section>.note` and paste into YAML frontmatter `quality-note`
+3. Read `section-notes.<section>.depth` to calibrate content volume:
+   - `deep` — full treatment: thorough prose, multiple code samples, diagrams,
+     comparison tables. This section has rich material to work with.
+   - `standard` — solid coverage with code examples and a diagram where useful.
+   - `light` — essentials only. Don't pad. Better short and honest than long and thin.
+   - `skip` — write a stub file with frontmatter and one-line explanation only.
+4. If rating is `mixed` or `cautionary`, apply observation markers to
    every pattern claim (worth emulating / acceptable trade-off /
    cautionary example / anti-pattern)
-4. If rating is `exemplary` or `solid`, markers are optional — use only
+5. If rating is `exemplary` or `solid`, markers are optional — use only
    when a specific observation deviates from the overall quality

@@ -103,6 +103,85 @@ Every section must present the correct alternative alongside the observation.
 
 ---
 
+## Depth Profiling
+
+After computing the overall rating, assign a **depth tier** to each section
+based on observable source characteristics. This replaces fixed word-count
+minimums with source-appropriate guidance.
+
+### Depth Tiers
+
+| Tier | Words | Code samples | Diagrams | When to assign |
+|---|---|---|---|---|
+| **deep** | 500+ | 4-6 | 2-4 | The source has substantial, non-obvious content for this section |
+| **standard** | 300-500 | 2-4 | 1-2 | The source has meaningful content but nothing exceptional |
+| **light** | 150-300 | 0-2 | 0-1 | The source has limited content; cover essentials, don't pad |
+| **skip** | stub only | 0 | 0 | The source has no meaningful content for this section |
+
+Word counts are *guidance*, not targets. A 280-word section that covers
+everything is better than a 500-word section with filler. The tier tells
+the writer "how much is here to write about," not "how much to write."
+
+### Depth Signals
+
+Evaluate these during Phase 1.5 using data already in `gather.yaml`:
+
+| Signal | Source (gather register) | Sections affected |
+|---|---|---|
+| **Codebase scale** | file count, module count, LOC | architecture, design-patterns |
+| **Layer count** | `layers` entries, directory depth | architecture |
+| **Pattern density** | abstraction layers, interface usage, polymorphism evidence | design-patterns |
+| **Tech novelty** | uncommon stack choices, custom tooling | technology-choices |
+| **Test sophistication** | test framework variety, fixture complexity, mocking patterns | testing-strategy |
+| **Dependency count** | `dependencies.runtime` length | dependencies |
+| **History depth** | commit count, age estimate, migration artifacts | evolution |
+| **Decision visibility** | config files, architecture docs, ADRs | key-decisions |
+| **Security surface** | auth code, validation layers, security headers | gaps-vulnerabilities |
+
+### Section Skip Rules
+
+A section is marked `skip` when the source genuinely lacks content for it.
+The writer creates a one-line stub file (frontmatter + explanation) instead
+of padding thin material.
+
+| Section | Skip when |
+|---|---|
+| `evolution.md` | <50 commits AND <6 months history AND no migration artifacts |
+| `testing-strategy.md` | No test files found in source |
+| `dependencies.md` | <3 runtime dependencies (fold into technology-choices instead) |
+| `if-starting-over.md` | Never skip — always applicable |
+| All others | Never skip — always have something to say |
+
+When a section is skipped, the stub format is:
+
+```markdown
+---
+source: <project-name>
+section: <section-name>
+depth: skip
+skip-reason: "<one-line explanation>"
+---
+
+# <Section Title>
+
+Not applicable for this source. <One-sentence explanation.>
+See [[<project-name>/technology-choices]] for related observations.
+```
+
+### Assignment Process
+
+For each section:
+
+1. Check skip rules first — if met, assign `skip`
+2. Look at the relevant depth signals from the gather register
+3. Ask: "Is there enough non-obvious material here for 500+ words of
+   genuine insight?" If yes → `deep`. If some but not a lot → `standard`.
+   If thin → `light`.
+4. Sanity check: a project shouldn't have all 13 sections at `deep` —
+   that suggests the threshold is too low. Typical distribution:
+   - Small/simple source: 1-2 deep, 4-6 standard, 3-5 light, 0-2 skip
+   - Large/complex source: 4-6 deep, 4-6 standard, 1-3 light, 0-1 skip
+
 ## Section Integration
 
 The quality rating affects every section:
