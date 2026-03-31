@@ -68,9 +68,9 @@ how much genuine material the source has for that section. Read
 
 | Tier | Words | Code samples | Diagrams | Approach |
 |---|---|---|---|---|
-| **deep** | 500+ | 4-6 | 2-4 | Full treatment — thorough prose, comparison tables, multiple traces |
-| **standard** | 300-500 | 2-4 | 1-2 | Solid coverage, enough to teach the key points |
-| **light** | 150-300 | 0-2 | 0-1 | Essentials only — don't pad thin material |
+| **deep** | 800-1500 | 5-8 | 3-5 | Full treatment — thorough prose, comparison tables, multiple traces |
+| **standard** | 400-800 | 2-4 | 1-2 | Solid coverage, enough to teach the key points |
+| **light** | 150-400 | 0-2 | 0-1 | Essentials only — don't pad thin material |
 | **skip** | stub | 0 | 0 | One-line explanation in frontmatter, no real content |
 
 Word counts are guidance, not targets. A concise section that covers

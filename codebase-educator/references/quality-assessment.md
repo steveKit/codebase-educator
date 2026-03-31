@@ -113,9 +113,9 @@ minimums with source-appropriate guidance.
 
 | Tier | Words | Code samples | Diagrams | When to assign |
 |---|---|---|---|---|
-| **deep** | 500+ | 4-6 | 2-4 | The source has substantial, non-obvious content for this section |
-| **standard** | 300-500 | 2-4 | 1-2 | The source has meaningful content but nothing exceptional |
-| **light** | 150-300 | 0-2 | 0-1 | The source has limited content; cover essentials, don't pad |
+| **deep** | 800-1500 | 5-8 | 3-5 | The source has substantial, non-obvious content for this section |
+| **standard** | 400-800 | 2-4 | 1-2 | The source has meaningful content but nothing exceptional |
+| **light** | 150-400 | 0-2 | 0-1 | The source has limited content; cover essentials, don't pad |
 | **skip** | stub only | 0 | 0 | The source has no meaningful content for this section |
 
 Word counts are *guidance*, not targets. A 280-word section that covers
