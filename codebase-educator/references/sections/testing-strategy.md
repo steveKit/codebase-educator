@@ -3,6 +3,9 @@
 **Goal:** Reader learns what testing decisions reveal about a project's
 priorities and engineering maturity.
 
+**Skip-eligible:** Yes — skip when no test files are found in the source.
+The absence of tests is noted in `gaps-vulnerabilities.md` instead.
+
 ## Structure
 
 1. **Coverage Map** — What's tested and what isn't (by module/feature area)

@@ -18,6 +18,7 @@ project-name: expressjs--express
 sections:
   architecture:
     status: done
+    depth: deep              # from quality.yaml — recorded for audit trail
     word-count: 450
     code-examples: 4
     concepts-linked:
@@ -32,6 +33,7 @@ sections:
 
   technology-choices:
     status: done
+    depth: standard
     word-count: 320
     concepts-linked:
       - boring-technology

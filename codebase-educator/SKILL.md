@@ -54,7 +54,7 @@ use, not upfront -- only load the schema you need for the current phase.
 | Phase | Load these references | Load these registers |
 |---|---|---|
 | 1 (Gather) | nothing extra | -- (creating them) |
-| 1.5 (Quality) | `quality-assessment.md` | `gather.yaml` |
+| 1.5 (Quality + Depth) | `quality-assessment.md` | `gather.yaml` |
 | 2 (Write) | `sections/_shared.md` + the ONE section template | `gather.yaml`, `url-index.yaml`, `quality.yaml` |
 | 2.5 (Sweep) | nothing extra | `sections.yaml` |
 | 3 (Concepts) | `concept-template.md` | `sections.yaml`, registry + connections + vault-state on disk |
@@ -153,7 +153,7 @@ making new lookups.
 
 ---
 
-## Phase 1.5: Quality Assessment
+## Phase 1.5: Quality Assessment & Depth Profiling
 
 **State transition:** `GATHERED -> ASSESSED`
 
@@ -163,9 +163,14 @@ Load `references/quality-assessment.md` for the full rubric.
 2. Evaluate all 6 quality signals (engineering maturity, maintenance health,
    testing discipline, documentation intent, security awareness, dependency hygiene)
 3. Assign overall rating: **exemplary**, **solid**, **mixed**, or **cautionary**
-4. Pre-compute per-section quality notes
-5. Write `quality.yaml` following `references/registers/quality.md` schema
-6. Update `state.yaml`: state -> `ASSESSED`
+4. **Assign depth tier per section** — using gather data (scale, layer count,
+   pattern density, history depth, etc.), assign each section one of:
+   `deep`, `standard`, `light`, or `skip`. See "Depth Profiling" and
+   "Section Skip Rules" in `references/quality-assessment.md` for criteria.
+5. Pre-compute per-section quality notes
+6. Write `quality.yaml` following `references/registers/quality.md` schema
+   (each section-note now includes both `note` and `depth`)
+7. Update `state.yaml`: state -> `ASSESSED`
 
 ---
 

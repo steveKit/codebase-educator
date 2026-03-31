@@ -32,7 +32,9 @@ Every section starts with:
 source: <project-name>
 section: <section-name>
 difficulty: beginner | intermediate | advanced
+depth: deep | standard | light | skip
 quality-note: <how the source quality rating affects this section>
+skip-reason: <only present when depth is skip>
 ---
 ```
 
@@ -58,13 +60,26 @@ With source URL:
 <sub>[source](base-url/blob/branch/path#Lstart-Lend)</sub>
 ````
 
-## Depth Minimums
+## Depth Tiers
 
-| Category | Min words | Code examples |
-|---|---|---|
-| Implementation-heavy (architecture, design-patterns, key-decisions, testing-strategy, gaps-vulnerabilities) | 300 | 3-5 |
-| Analytical (technology-choices, dependencies, evolution, if-starting-over) | 200 | 1-3 |
-| Reference (learning-path, glossary, resources, overview) | Complete coverage | 0 |
+Each section's depth is set in `quality.yaml` during Phase 1.5, based on
+how much genuine material the source has for that section. Read
+`section-notes.<section>.depth` before writing.
+
+| Tier | Words | Code samples | Diagrams | Approach |
+|---|---|---|---|---|
+| **deep** | 500+ | 4-6 | 2-4 | Full treatment — thorough prose, comparison tables, multiple traces |
+| **standard** | 300-500 | 2-4 | 1-2 | Solid coverage, enough to teach the key points |
+| **light** | 150-300 | 0-2 | 0-1 | Essentials only — don't pad thin material |
+| **skip** | stub | 0 | 0 | One-line explanation in frontmatter, no real content |
+
+Word counts are guidance, not targets. A concise section that covers
+everything is always better than a padded one. The tier tells you
+"how much is here to say," not "how much you must write."
+
+If the depth tier feels wrong as you write (e.g., you're assigned
+`standard` but keep finding rich material), adjust upward. The
+assessment is a starting point, not a constraint.
 
 ## Quality Markers
 

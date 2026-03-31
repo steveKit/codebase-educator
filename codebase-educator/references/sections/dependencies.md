@@ -3,6 +3,10 @@
 **Goal:** Reader learns to evaluate dependency decisions — when to rely on
 third-party code and when to build.
 
+**Skip-eligible:** Yes — skip when <3 runtime dependencies. Fold dependency
+observations into `technology-choices.md` instead of writing a thin
+standalone section.
+
 ## Structure
 
 1. **Dependency Overview** — Count, categories (framework, utility, dev tooling)
